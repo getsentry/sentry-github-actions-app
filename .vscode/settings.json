@@ -1,0 +1,4 @@
+{
+    "python.autoComplete.extraPaths": ["__pypackages__/3.8/lib"],
+    "python.analysis.extraPaths": ["__pypackages__/3.8/lib"]
+}
