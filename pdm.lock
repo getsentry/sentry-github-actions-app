@@ -1,0 +1,49 @@
+[[package]]
+name = "asgiref"
+version = "3.5.0"
+requires_python = ">=3.7"
+summary = "ASGI specs, helper code, and adapters"
+
+[[package]]
+name = "django"
+version = "3.2"
+requires_python = ">=3.6"
+summary = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
+dependencies = [
+    "asgiref<4,>=3.3.2",
+    "pytz",
+    "sqlparse>=0.2.2",
+]
+
+[[package]]
+name = "pytz"
+version = "2022.1"
+summary = "World timezone definitions, modern and historical"
+
+[[package]]
+name = "sqlparse"
+version = "0.4.2"
+requires_python = ">=3.5"
+summary = "A non-validating SQL parser."
+
+[metadata]
+lock_version = "3.1"
+content_hash = "sha256:328082e944810d689ec6f581c25918fd0cb2c6d812e679c74c015fcbf376c406"
+
+[metadata.files]
+"asgiref 3.5.0" = [
+    {file = "asgiref-3.5.0-py3-none-any.whl", hash = "sha256:88d59c13d634dcffe0510be048210188edd79aeccb6a6c9028cdad6f31d730a9"},
+    {file = "asgiref-3.5.0.tar.gz", hash = "sha256:2f8abc20f7248433085eda803936d98992f1343ddb022065779f37c5da0181d0"},
+]
+"django 3.2" = [
+    {file = "Django-3.2-py3-none-any.whl", hash = "sha256:0604e84c4fb698a5e53e5857b5aea945b2f19a18f25f10b8748dbdf935788927"},
+    {file = "Django-3.2.tar.gz", hash = "sha256:21f0f9643722675976004eb683c55d33c05486f94506672df3d6a141546f389d"},
+]
+"pytz 2022.1" = [
+    {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
+    {file = "pytz-2022.1.tar.gz", hash = "sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7"},
+]
+"sqlparse 0.4.2" = [
+    {file = "sqlparse-0.4.2-py3-none-any.whl", hash = "sha256:48719e356bb8b42991bdbb1e8b83223757b93789c00910a616a071910ca4a64d"},
+    {file = "sqlparse-0.4.2.tar.gz", hash = "sha256:0c00730c74263a94e5a9919ade150dfc3b19c574389985446148402998287dae"},
+]
