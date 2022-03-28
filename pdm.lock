@@ -43,6 +43,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gunicorn"
+version = "20.1.0"
+requires_python = ">=3.5"
+summary = "WSGI HTTP Server for UNIX"
+dependencies = [
+    "setuptools>=3.0",
+]
+
+[[package]]
 name = "iniconfig"
 version = "1.1.1"
 summary = "iniconfig: brain-dead simple config-ini parsing"
@@ -121,6 +130,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "setuptools"
+version = "61.2.0"
+requires_python = ">=3.7"
+summary = "Easily download, build, install, upgrade, and uninstall Python packages"
+
+[[package]]
 name = "tomli"
 version = "2.0.1"
 requires_python = ">=3.7"
@@ -140,7 +155,7 @@ summary = "The comprehensive WSGI web application library."
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:599a0d193d7ce779545c19256c6bac7eb942701fe6334be3049538c6d43c6a8e"
+content_hash = "sha256:480e2557928c7080979db0c74b2a055ffe555895b22da9743bc4d6771aaff0bf"
 
 [metadata.files]
 "atomicwrites 1.4.0" = [
@@ -166,6 +181,10 @@ content_hash = "sha256:599a0d193d7ce779545c19256c6bac7eb942701fe6334be3049538c6d
 "flask 2.0.3" = [
     {file = "Flask-2.0.3-py3-none-any.whl", hash = "sha256:59da8a3170004800a2837844bfa84d49b022550616070f7cb1a659682b2e7c9f"},
     {file = "Flask-2.0.3.tar.gz", hash = "sha256:e1120c228ca2f553b470df4a5fa927ab66258467526069981b3eb0a91902687d"},
+]
+"gunicorn 20.1.0" = [
+    {file = "gunicorn-20.1.0-py3-none-any.whl", hash = "sha256:9dcc4547dbb1cb284accfb15ab5667a0e5d1881cc443e0677b4882a4067a807e"},
+    {file = "gunicorn-20.1.0.tar.gz", hash = "sha256:e0a968b5ba15f8a328fdfd7ab1fcb5af4470c28aaf7e55df02a99bc13138e6e8"},
 ]
 "iniconfig 1.1.1" = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
@@ -244,6 +263,10 @@ content_hash = "sha256:599a0d193d7ce779545c19256c6bac7eb942701fe6334be3049538c6d
 "sentry-sdk 1.5.8" = [
     {file = "sentry_sdk-1.5.8-py2.py3-none-any.whl", hash = "sha256:32af1a57954576709242beb8c373b3dbde346ac6bd616921def29d68846fb8c3"},
     {file = "sentry-sdk-1.5.8.tar.gz", hash = "sha256:38fd16a92b5ef94203db3ece10e03bdaa291481dd7e00e77a148aa0302267d47"},
+]
+"setuptools 61.2.0" = [
+    {file = "setuptools-61.2.0-py3-none-any.whl", hash = "sha256:8f4813dd6a4d6cc17bde85fb2e635fe19763f96efbb0ddf5575562e5ee0bc47a"},
+    {file = "setuptools-61.2.0.tar.gz", hash = "sha256:c3d4e2ab578fbf83775755cd76dae73627915a22832cf4ea5de895978767833b"},
 ]
 "tomli 2.0.1" = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},

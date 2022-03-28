@@ -16,6 +16,9 @@ requires-python = ">=3.8"
 Homepage = ""
 
 [project.optional-dependencies]
+deployment = [
+    "gunicorn>=20.1.0",
+]
 [tool.pdm]
 
 [tool.pdm.scripts]
