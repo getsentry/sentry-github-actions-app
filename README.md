@@ -5,12 +5,26 @@ It works by listening to a Github webhook that sends workflows events and stores
 
 ## Set up
 
+### Sentry
+
+* Create a project for reporting errors of the app and another one to track Github workflow transactions.
+
+### Github token & webhook
+
+* Create a [personal token](https://github.com/settings/tokens)
+  * You do not need to give it any scopes
+  * Take note of the token (Regenerate it if you forgot to take note of it)
+  * After creating the token, some orgs [require authorizing tokens](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on), thus, select "Configure SSO" if you see it
+  * If this is for development, you can place the token in a file named `.env` as `GH_TOKEN`
+* Create a Github webhook for the repo you want to analyze
+  * Choose `application/json`
+  * Choose `workflow` events
+  * Enter the Github token from the previous step
+
 ### Production/staging environment
 
 * Deploy the app to a service (e.g. GCP) and make it publicly reachable
 * Take note of the app's URL
-* Create a Github webhook for the repo you want to analyze
-  * Choose `workflow` events & make sure to choose `application/json`
 
 ### Local development
 
@@ -28,6 +42,6 @@ Set up steps:
 
 Development steps:
 
-* Start the flask app (`pdm run flask`)
+* Start the flask app (`pdm run start`)
 
 Run tests with `pdm run test`.

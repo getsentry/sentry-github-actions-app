@@ -6,17 +6,14 @@ from .workflow_events import process_data
 
 from sentry_sdk import init, capture_exception
 
+APP_DSN = os.environ("APP_DSN")
+if APP_DSN:
+    # This tracks errors and performance of the app itself rather than GH workflows
+    init(APP_DSN, traces_sample_rate=1.0, environment="development")
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
-
-# This tracks errors and performance of the app itself rather than GH workflows
-init(
-    "https://86b85918a26246b2b6160820de5c6be1@o19635.ingest.sentry.io/5903949",
-    traces_sample_rate=1.0,
-    environment="development",
-)
 
 app = Flask(__name__)
 
@@ -40,6 +37,7 @@ def main():
     try:
         payload, http_code = handle_event(request.json, request.headers)
     except Exception as e:
+        # Report app issue to Sentry
         capture_exception(e)
         logging.exception(e)
 

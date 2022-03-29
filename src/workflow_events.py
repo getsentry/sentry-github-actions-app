@@ -5,41 +5,73 @@ import os
 import uuid
 from datetime import datetime
 
+import requests
 from sentry_sdk import capture_exception
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
-
-# XXX: To support calling script.py and flask run
-try:
-    from .lib import get, post, url_from_dsn
-    from .sentry import base_transaction
-except ImportError:
-    from lib import get, post, url_from_dsn
-    from sentry import base_transaction
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
-SENTRY_DSN = "https://060c8c7a20ae472c8b32858cb41c36a7@o19635.ingest.sentry.io/5899451"
+# We need an authorized token to fetch the API. If you have SSO on your org you will need to grant permission
+# Your app and the Github webhook will share this secret
+# You can create an .env file and place the token in it
+GH_TOKEN = os.environ.get("GH_TOKEN")
+# Where to report Github actions transactions
+SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
 
+def base_transaction():
+    trace_id = uuid.uuid4().hex
+    parent_span_id = uuid.uuid4().hex[16:]
+    return {
+        "event_id": uuid.uuid4().hex,
+        "type": "transaction",
+        "transaction": "default",
+        "contexts": {
+            "trace": {
+                "trace_id": trace_id,
+                "span_id": parent_span_id,
+                "type": "trace",
+            },
+        },
+    }
+
+def get(url):
+    headers = {}
+    if GH_TOKEN and url.find("github.com") >= 0:
+        headers["Authorization"] = f"token {GH_TOKEN}"
+    req = requests.get(url, headers=headers)
+    if not req.ok:
+        raise Exception(req.text)
+    return req
 
 def send_envelope(envelope):
+    base_uri, project_id = SENTRY_GITHUB_DSN.rsplit("/", 1)
+    sentry_key = base_uri.rsplit('@')[0].rsplit('https://')[1]
     headers = {
         "event_id": uuid.uuid4().hex,  # Does this have to match anything?
         "sent_at": format_timestamp(datetime.utcnow()),
         "Content-Type": "application/x-sentry-envelope",
         "Content-Encoding": "gzip",
-        "X-Sentry-Auth": "Sentry sentry_key=060c8c7a20ae472c8b32858cb41c36a7,"
+        "X-Sentry-Auth": f"Sentry sentry_key={sentry_key},"
         + f"sentry_client=gha-sentry/0.0.1,sentry_timestamp={str(datetime.utcnow())},"
         + "sentry_version=7",
     }
+
+    # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
+    url = f"{base_uri}/api/{project_id}/envelope/"
+    if GH_TOKEN and url.find("github.com") >= 0:
+        headers["Authorization"] = f"token {GH_TOKEN}"
 
     body = io.BytesIO()
     with gzip.GzipFile(fileobj=body, mode="w") as f:
         envelope.serialize_into(f)
 
-    post(url_from_dsn(SENTRY_DSN, "envelope"), headers=headers, body=body.getvalue())
+    req = requests.post(url, data=body.getvalue(), headers=headers)
+    if not req.ok:
+        raise Exception(req.text)
+    return req
 
 
 def get_extra_metadata(workflow_run):
