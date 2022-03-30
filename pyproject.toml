@@ -1,7 +1,7 @@
 [project]
-name = ""
-version = ""
-description = ""
+name = "Github Actions to Sentry app"
+version = "0.0.1"
+description = "It listens to workflow events and inserts them into Sentry."
 authors = [
     {name = "Armen Zambrano G.", email = "armenzg@sentry.io"},
 ]
@@ -14,20 +14,30 @@ dependencies = [
 requires-python = ">=3.8"
 
 [project.urls]
-Homepage = ""
+Homepage = "https://github.com/armenzg/github-actions-app"
 
 [project.optional-dependencies]
-[tool.pdm]
-
 [tool.pdm.scripts]
 start = "flask run"
 test = "pytest"
+# You will need to install this binary in your host
+# https://watchexec.github.io/index.html
+watch= "watchexec -f src,tests -e py pytest"
 
 [tool.pdm.dev-dependencies]
 dev = [
     "pytest>=7.1.1",
     "python-dotenv>=0.20.0",
+    "black>=22.3.0",
 ]
+
+[tool.pytest.ini_options]
+# -ra:  Show extra test summary info: (a)ll except passed
+# -q:   Decrease verbosity
+# --lf: Rerun only the tests that failed at the last run (or all if none failed)
+addopts = "-ra -q --lf"
+testpaths = [ "tests" ]
+
 [build-system]
 requires = ["pdm-pep517>=0.12.0"]
 build-backend = "pdm.pep517.api"

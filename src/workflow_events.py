@@ -21,21 +21,6 @@ GH_TOKEN = os.environ.get("GH_TOKEN")
 # Where to report Github actions transactions
 SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
 
-def base_transaction():
-    trace_id = uuid.uuid4().hex
-    parent_span_id = uuid.uuid4().hex[16:]
-    return {
-        "event_id": uuid.uuid4().hex,
-        "type": "transaction",
-        "transaction": "default",
-        "contexts": {
-            "trace": {
-                "trace_id": trace_id,
-                "span_id": parent_span_id,
-                "type": "trace",
-            },
-        },
-    }
 
 def get(url):
     headers = {}
@@ -46,9 +31,10 @@ def get(url):
         raise Exception(req.text)
     return req
 
+
 def send_envelope(envelope):
     base_uri, project_id = SENTRY_GITHUB_DSN.rsplit("/", 1)
-    sentry_key = base_uri.rsplit('@')[0].rsplit('https://')[1]
+    sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
     headers = {
         "event_id": uuid.uuid4().hex,  # Does this have to match anything?
         "sent_at": format_timestamp(datetime.utcnow()),
@@ -97,29 +83,21 @@ def determine_job_name(workflow):
     return job_name
 
 
-def _generate_transaction(workflow, job_name):
-    transaction = base_transaction()
-    transaction["transaction"] = job_name
-    # When processing old data during development, in Sentry's UI, you will
-    # see an error for transactions with "Clock drift detected in SDK";
-    # It is harmeless.
-    transaction["start_timestamp"] = workflow["started_at"]
-    transaction["timestamp"] = workflow["completed_at"]
-    transaction["contexts"]["trace"]["op"] = workflow["name"]
-    # XXX: Determine what the failure state should look like
-    transaction["contexts"]["trace"]["status"] = (
-        "ok" if workflow["conclusion"] == "success" else "TBD"
-    )
-    transaction["contexts"]["trace"]["data"] = (workflow["html_url"],)
-    # html_url points to the UI showing the job run
-    # url points has the data to generate this transaction
-    # run_url has extra metadata about the workflow file
-    transaction["contexts"]["trace"]["tags"] = {
-        "html_url": workflow["html_url"],
-        "url": workflow["url"],
-        "run_url": workflow["run_url"],
+def _base_transaction():
+    trace_id = uuid.uuid4().hex
+    parent_span_id = uuid.uuid4().hex[16:]
+    return {
+        "event_id": uuid.uuid4().hex,
+        "type": "transaction",
+        "transaction": "default",
+        "contexts": {
+            "trace": {
+                "trace_id": trace_id,
+                "span_id": parent_span_id,
+                "type": "trace",
+            },
+        },
     }
-    return transaction
 
 
 def _generate_spans(steps, parent_span_id, trace_id):
@@ -142,15 +120,28 @@ def _generate_spans(steps, parent_span_id, trace_id):
     return spans
 
 
-# Documentation about traces, transactions and spans
-# https://docs.sentry.io/product/sentry-basics/tracing/distributed-tracing/#traces
-def generate_transaction(workflow, job_name):
-    # This can happen when the workflow is skipped and there are no steps
-    if not workflow["steps"]:
-        logging.warn(f"We are ignoring {workflow['name']} -> {workflow['html_url']}")
-        return
-
-    transaction = _generate_transaction(workflow, job_name)
+def _generate_transaction(workflow):
+    transaction = _base_transaction()
+    transaction["transaction"] = workflow["job_name"]
+    # When processing old data during development, in Sentry's UI, you will
+    # see an error for transactions with "Clock drift detected in SDK";
+    # It is harmeless.
+    transaction["start_timestamp"] = workflow["started_at"]
+    transaction["timestamp"] = workflow["completed_at"]
+    transaction["contexts"]["trace"]["op"] = workflow["name"]
+    # XXX: Determine what the failure state should look like
+    transaction["contexts"]["trace"]["status"] = (
+        "ok" if workflow["conclusion"] == "success" else "TBD"
+    )
+    transaction["contexts"]["trace"]["data"] = (workflow["html_url"],)
+    # html_url points to the UI showing the job run
+    # url points has the data to generate this transaction
+    # run_url has extra metadata about the workflow file
+    transaction["contexts"]["trace"]["tags"] = {
+        "html_url": workflow["html_url"],
+        "url": workflow["url"],
+        "run_url": workflow["run_url"],
+    }
     transaction["spans"] = _generate_spans(
         workflow["steps"],
         transaction["contexts"]["trace"]["span_id"],
@@ -159,26 +150,27 @@ def generate_transaction(workflow, job_name):
     return transaction
 
 
-def generate_event(workflow, job_name):
-    for step in workflow["steps"]:
-        if step["conclusion"] != "success":
-            return {
-                "message": f"{job_name} failed",
-                "level": "error",
-                "tags": {"url": f'{workflow["html_url"]}/?check_suite_focus=true'},
-            }
+# Documentation about traces, transactions and spans
+# https://docs.sentry.io/product/sentry-basics/tracing/distributed-tracing/#traces
+def generate_transaction(workflow):
+    # This can happen when the workflow is skipped and there are no steps
+    if not workflow["steps"]:
+        logging.warning(f"We are ignoring {workflow['name']} -> {workflow['html_url']}")
+        return
+
+    return _generate_transaction(workflow)
 
 
 def process_data(data):
     workflow_job = data["workflow_job"]
-    # XXX: We can probably cache the function call rather than have to pass it down via parameter
-    job_name = determine_job_name(workflow_job)
+    workflow_job["job_name"] = determine_job_name(workflow_job)
     envelope = Envelope()
-    transaction = generate_transaction(workflow_job, job_name)
+    transaction = generate_transaction(workflow_job)
     if transaction:
         envelope.add_transaction(transaction)
-    if workflow_job["conclusion"] == "failure":
-        event = generate_event(workflow_job, job_name)
-        envelope.add_event(event)
+    # XXX: Evaluate if good approach
+    # if workflow_job["conclusion"] == "failure":
+    #     event = generate_event(workflow_job)
+    #     envelope.add_event(event)
     if envelope.items:
         send_envelope(envelope)
