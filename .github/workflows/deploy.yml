@@ -36,11 +36,13 @@ jobs:
       - name: Authorize Docker push
         run: gcloud auth configure-docker
 
-      - name: Build and Push Container
+      - name: Build, run and push Container
         env:
           RELEASE: ${{ steps.info.outputs.service }}
         run: |-
           docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
+          docker run -d --rm us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
+          docker stop $(docker ps -aq)
           docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
 
       - name: Deploy to Cloud Run

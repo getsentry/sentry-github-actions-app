@@ -9,14 +9,14 @@ COPY src/ /project/src
 # Install dependencies and project
 WORKDIR /project
 RUN pdm install --prod --no-lock --no-editable
-# Install gunicorn
-RUN pdm install -G deployment --no-lock --no-editable
 
 # Execution stage
 FROM python:3.8
+WORKDIR /app
 # Retrieve packages from build stage
 ENV PYTHONPATH=/project/pkgs
 COPY --from=builder /project/__pypackages__/3.8/lib /project/pkgs
+RUN pip install gunicorn==20.1.0
 # Source code
 COPY src/ /app/src/
 # 1 worker, 4 worker threads should be more than enough.
