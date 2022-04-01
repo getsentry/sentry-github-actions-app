@@ -49,7 +49,7 @@ pdm run ingest tests/fixtures/failed_workflow.json
 
 Steps to ingest events from a repository:
 
-* Install ngrok, authenticate and start it up (`ngrok http 5000`)
+* Install ngrok, authenticate and start it up (`ngrok http 5001`)
   * Take note of the URL
 * Create a Github webhook for the repo you want to analyze
   * Choose `workflow` events & make sure to choose `application/json`

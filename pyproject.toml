@@ -17,7 +17,7 @@ requires-python = ">=3.8"
 Homepage = "https://github.com/armenzg/github-actions-app"
 
 [tool.pdm.scripts]
-start = "flask run"
+start = "flask run -p 5001"
 test = "pytest"
 ingest = "python src/cli.py"
 # You will need to install this binary in your host

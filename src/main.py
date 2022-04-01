@@ -2,7 +2,7 @@ import logging
 import os
 from flask import jsonify, request, Flask
 
-from workflow_events import process_workflow
+from .workflow_events import process_workflow
 
 from sentry_sdk import init, capture_exception
 
