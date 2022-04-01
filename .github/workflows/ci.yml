@@ -12,12 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install deps
-        run: |
-          pip install -U pip wheel
-          pip install -U pdm
-          pdm sync
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
 
       - name: Run tests
         run: |
-          pdm run pytest
+          pip install pdm
+          pdm run test

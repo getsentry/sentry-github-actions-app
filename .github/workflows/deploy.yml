@@ -1,0 +1,51 @@
+name: Deploy
+env:
+  PROJECT_ID: sentry-dev-tooling
+  SERVICE: github-actions-app
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/*"
+      - Dockerfile
+      - "pdm.lock"
+      - .github/workflows/deploy.yml
+
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    name: build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          export_default_credentials: true # Set to true to authenticate the Cloud Run action
+
+      # This gives the ability to push to the Google Registry
+      - name: Authorize Docker push
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Container
+        env:
+          RELEASE: ${{ steps.info.outputs.service }}
+        run: |-
+          docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
+          docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v0.5.0
+        with:
+          service: ${{ env.SERVICE }}
+          image: us.gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          region: us-central1
