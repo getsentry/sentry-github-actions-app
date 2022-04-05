@@ -38,7 +38,7 @@ jobs:
           docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
 
       - name: Setup Cloud SDK
-        if: ! github.event.pull_request
+        if: github.ref == 'refs/heads/master'
         uses: google-github-actions/setup-gcloud@v0.2.1
         with:
           project_id: ${{ env.PROJECT_ID }}
@@ -47,16 +47,16 @@ jobs:
 
       # This gives the ability to push to the Google Registry
       - name: Authorize Docker push
-        if: ! github.event.pull_request
+        if: github.ref == 'refs/heads/master'
         run: gcloud auth configure-docker
 
       - name: Push container
-        if: ! github.event.pull_request
+        if: github.ref == 'refs/heads/master'
         run: |-
           docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
 
       - name: Deploy to Cloud Run
-        if: ! github.event.pull_request
+        if: github.ref == 'refs/heads/master'
         uses: google-github-actions/deploy-cloudrun@v0.5.0
         with:
           service: ${{ env.SERVICE }}
