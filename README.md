@@ -59,4 +59,6 @@ Development steps:
 
 * Start the flask app (`pdm run start`)
 
+Install pre-commit hooks with `pdm run pre-commt install`.
+
 Run tests with `pdm run test`.

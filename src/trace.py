@@ -176,13 +176,8 @@ def generate_trace(workflow):
             f"We are ignoring '{workflow['name']}' because it was skipped -> {workflow['html_url']}"
         )
         return
-
-    return _generate_trace(workflow)
-
-
-def process_workflow(workflow_job):
-    envelope = Envelope()
-    trace = generate_trace(workflow_job)
+    trace = _generate_trace(workflow)
     if trace:
+        envelope = Envelope()
         envelope.add_transaction(trace)
         send_envelope(envelope)

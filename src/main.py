@@ -2,7 +2,7 @@ import logging
 import os
 from flask import jsonify, request, Flask
 
-from .workflow_events import process_workflow
+from .trace import send_trace
 
 from sentry_sdk import init, capture_exception
 
@@ -27,7 +27,7 @@ def handle_event(data, headers):
     if data["action"] != "completed":
         return ({"reason": "We cannot do anything with this workflow state."}, 200)
 
-    process_workflow(data["workflow_job"])
+    send_trace(data["workflow_job"])
     return {"reason": "OK"}, 200
 
 

@@ -16,6 +16,7 @@ requires-python = ">=3.8"
 [project.urls]
 Homepage = "https://github.com/armenzg/github-actions-app"
 
+[project.optional-dependencies]
 [tool.pdm.scripts]
 start = "flask run -p 5001"
 test = "pytest"
@@ -29,6 +30,7 @@ dev = [
     "pytest>=7.1.1",
     "python-dotenv>=0.20.0",
     "black>=22.3.0",
+    "pre-commit>=2.18.1",
 ]
 
 [tool.pytest.ini_options]
