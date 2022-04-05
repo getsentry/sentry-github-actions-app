@@ -16,9 +16,14 @@ jobs:
         with:
           python-version: "3.8"
 
+      - name: Set up
+        run: |
+          pip install wheel
+          pip install pdm
+          pdm sync
+
       - name: Run tests
         run: |
-          pip install pdm
           pdm run test
 
   pre-commit-checks:
@@ -32,6 +37,11 @@ jobs:
       - uses: actions/setup-python@v3
         with:
           python-version: "3.8"
+
+      - name: Set up
+        run: |
+          pip install wheel
+          pip install pre-commit
 
       - name: Install hooks
         run: |
