@@ -169,7 +169,7 @@ def _generate_trace(workflow):
     return transaction
 
 
-def generate_trace(workflow):
+def send_trace(workflow):
     # This can happen when the workflow is skipped and there are no steps
     if workflow["conclusion"] == "skipped":
         logging.info(
