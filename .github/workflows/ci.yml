@@ -14,9 +14,40 @@ jobs:
 
       - uses: actions/setup-python@v3
         with:
-          python-version: '3.8'
+          python-version: "3.8"
+
+      - name: Set up
+        run: |
+          pip install wheel
+          pip install pdm
+          pdm sync
 
       - name: Run tests
         run: |
-          pip install pdm
           pdm run test
+
+  pre-commit-checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.8"
+
+      - name: Set up
+        run: |
+          pip install wheel
+          pip install pre-commit
+
+      - name: Install hooks
+        run: |
+          pip install pre-commit
+          pre-commit install
+
+      - name: Run hooks
+        run: |
+          pre-commit run --all-files

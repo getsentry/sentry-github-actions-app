@@ -1,0 +1,609 @@
+{
+  "id": 2098089400,
+  "name": "sentry pull request bot",
+  "node_id": "WFR_kwLOAA1TcM59Dk24",
+  "head_branch": "master",
+  "head_sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+  "run_number": 31031,
+  "event": "issue_comment",
+  "status": "completed",
+  "conclusion": "skipped",
+  "workflow_id": 3020796,
+  "check_suite_id": 5943587195,
+  "check_suite_node_id": "CS_kwDOAA1TcM8AAAABYkPxew",
+  "url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400",
+  "html_url": "https://github.com/getsentry/sentry/actions/runs/2098089400",
+  "pull_requests": [
+    {
+      "url": "https://api.github.com/repos/heholek/sentry/pulls/86",
+      "id": 894496956,
+      "number": 86,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "f05d2d00449b044f1f81ad294c6d2988cf504a1e",
+        "repo": {
+          "id": 447747682,
+          "url": "https://api.github.com/repos/heholek/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/Nexuscompute/sentry/pulls/226",
+      "id": 893903127,
+      "number": 226,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "f05d2d00449b044f1f81ad294c6d2988cf504a1e",
+        "repo": {
+          "id": 435303402,
+          "url": "https://api.github.com/repos/Nexuscompute/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/sljeff/sentry/pulls/204",
+      "id": 887021323,
+      "number": 204,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "f05d2d00449b044f1f81ad294c6d2988cf504a1e",
+        "repo": {
+          "id": 428910254,
+          "url": "https://api.github.com/repos/sljeff/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/NeatNerdPrime/sentry/pulls/1423",
+      "id": 884824402,
+      "number": 1423,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "8429cf33623b759a3ff7bddcf13d251b0dab9b8e",
+        "repo": {
+          "id": 212712897,
+          "url": "https://api.github.com/repos/NeatNerdPrime/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/littlekign/sentry/pulls/100",
+      "id": 841827111,
+      "number": 100,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "b2aa926c73ae5bf70ac538a9794e6a5ad37fd8cd",
+        "repo": {
+          "id": 253251945,
+          "url": "https://api.github.com/repos/littlekign/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/httpsgithu/sentry/pulls/22",
+      "id": 750344111,
+      "number": 22,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "284fefe45ccc3d21de6e52ce8a480c10b5bef3c1",
+        "repo": {
+          "id": 250191602,
+          "url": "https://api.github.com/repos/httpsgithu/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/KingDEV95/sentry/pulls/313",
+      "id": 750313238,
+      "number": 313,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "576dbb92b9f5bec8bec4a1759610583e9237a49b",
+        "repo": {
+          "id": 256645481,
+          "url": "https://api.github.com/repos/KingDEV95/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/skyplaying/sentry/pulls/57",
+      "id": 750273455,
+      "number": 57,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "576dbb92b9f5bec8bec4a1759610583e9237a49b",
+        "repo": {
+          "id": 340541581,
+          "url": "https://api.github.com/repos/skyplaying/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/dk-dev/sentry/pulls/335",
+      "id": 622223860,
+      "number": 335,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "4645a05b5ad92c6eaf522f88063219d0d784be07",
+        "repo": {
+          "id": 13605132,
+          "url": "https://api.github.com/repos/dk-dev/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/waterdrops/sentry/pulls/17",
+      "id": 620768325,
+      "number": 17,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "12678a7dfc9f604485ea1847ab631a3d92670338",
+        "repo": {
+          "id": 82283669,
+          "url": "https://api.github.com/repos/waterdrops/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/symfu/sentry/pulls/1165",
+      "id": 582026148,
+      "number": 1165,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "0902abd3d3528df231fffd3929730495dcf65f79",
+        "repo": {
+          "id": 224076470,
+          "url": "https://api.github.com/repos/symfu/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/fakegit/sentry/pulls/1132",
+      "id": 574585722,
+      "number": 1132,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "d830eb47b4c60ae45994464e157587b5880cce53",
+        "repo": {
+          "id": 220568438,
+          "url": "https://api.github.com/repos/fakegit/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/dgkh1975/sentry/pulls/1",
+      "id": 568785494,
+      "number": 1,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "4f1d6dbdfd9ea5cdb785e009af2ef91d8f988dc8",
+        "repo": {
+          "id": 333858862,
+          "url": "https://api.github.com/repos/dgkh1975/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/Mu-L/sentry/pulls/48",
+      "id": 563125460,
+      "number": 48,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "ebcf4b671702fe9bf01c4921a766593c74e26608",
+        "repo": {
+          "id": 295943252,
+          "url": "https://api.github.com/repos/Mu-L/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/Jankyboy/sentry/pulls/1",
+      "id": 495898142,
+      "number": 1,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "31f606045ce6c1c96df8869f6ae0e890bec8cbcc",
+        "repo": {
+          "id": 300087432,
+          "url": "https://api.github.com/repos/Jankyboy/sentry",
+          "name": "sentry"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/Mattlk13/sentry-1/pulls/243",
+      "id": 302696163,
+      "number": 243,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "19b0870916b80250f3cb69277641bfdd03320415",
+        "repo": {
+          "id": 81418058,
+          "url": "https://api.github.com/repos/Mattlk13/sentry-1",
+          "name": "sentry-1"
+        }
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/simmetria/sentry/pulls/1",
+      "id": 26629667,
+      "number": 1,
+      "head": {
+        "ref": "master",
+        "sha": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+        "repo": {
+          "id": 873328,
+          "url": "https://api.github.com/repos/getsentry/sentry",
+          "name": "sentry"
+        }
+      },
+      "base": {
+        "ref": "master",
+        "sha": "9731f26adb44847d1c883cca108afc0755cf21cc",
+        "repo": {
+          "id": 6701590,
+          "url": "https://api.github.com/repos/simmetria/sentry",
+          "name": "sentry"
+        }
+      }
+    }
+  ],
+  "created_at": "2022-04-05T18:33:44Z",
+  "updated_at": "2022-04-05T18:33:47Z",
+  "actor": {
+    "login": "JoshFerge",
+    "id": 1976777,
+    "node_id": "MDQ6VXNlcjE5NzY3Nzc=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/1976777?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/JoshFerge",
+    "html_url": "https://github.com/JoshFerge",
+    "followers_url": "https://api.github.com/users/JoshFerge/followers",
+    "following_url": "https://api.github.com/users/JoshFerge/following{/other_user}",
+    "gists_url": "https://api.github.com/users/JoshFerge/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/JoshFerge/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/JoshFerge/subscriptions",
+    "organizations_url": "https://api.github.com/users/JoshFerge/orgs",
+    "repos_url": "https://api.github.com/users/JoshFerge/repos",
+    "events_url": "https://api.github.com/users/JoshFerge/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/JoshFerge/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "run_attempt": 1,
+  "run_started_at": "2022-04-05T18:33:44Z",
+  "triggering_actor": {
+    "login": "JoshFerge",
+    "id": 1976777,
+    "node_id": "MDQ6VXNlcjE5NzY3Nzc=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/1976777?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/JoshFerge",
+    "html_url": "https://github.com/JoshFerge",
+    "followers_url": "https://api.github.com/users/JoshFerge/followers",
+    "following_url": "https://api.github.com/users/JoshFerge/following{/other_user}",
+    "gists_url": "https://api.github.com/users/JoshFerge/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/JoshFerge/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/JoshFerge/subscriptions",
+    "organizations_url": "https://api.github.com/users/JoshFerge/orgs",
+    "repos_url": "https://api.github.com/users/JoshFerge/repos",
+    "events_url": "https://api.github.com/users/JoshFerge/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/JoshFerge/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "jobs_url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400/jobs",
+  "logs_url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400/logs",
+  "check_suite_url": "https://api.github.com/repos/getsentry/sentry/check-suites/5943587195",
+  "artifacts_url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400/artifacts",
+  "cancel_url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400/cancel",
+  "rerun_url": "https://api.github.com/repos/getsentry/sentry/actions/runs/2098089400/rerun",
+  "previous_attempt_url": null,
+  "workflow_url": "https://api.github.com/repos/getsentry/sentry/actions/workflows/3020796",
+  "head_commit": {
+    "id": "e6f148cf35ff4d7e5da932cd3b1ffe8f40b1af52",
+    "tree_id": "d02c6f802c073da7d1f0605ddabe7980847a7798",
+    "message": "chore(eslint): Don't specify the .eslintrc.* file in vscode workspace settings (#33308)\n\nI saw an error in the `vscode-eslint` plugin:\r\n```\r\nError: Invalid Options:\r\n- Unknown options: configFile\r\n- 'configFile' has been removed. Please use the 'overrideConfigFile' option instead.\r\n```\r\n\r\nThe plugin can find our eslintrc file without the explicit `configFile` field because the file sticks to the normal naming convention.",
+    "timestamp": "2022-04-05T18:26:04Z",
+    "author": {
+      "name": "Ryan Albrecht",
+      "email": "ryan.albrecht@sentry.io"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com"
+    }
+  },
+  "repository": {
+    "id": 873328,
+    "node_id": "MDEwOlJlcG9zaXRvcnk4NzMzMjg=",
+    "name": "sentry",
+    "full_name": "getsentry/sentry",
+    "private": false,
+    "owner": {
+      "login": "getsentry",
+      "id": 1396951,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjEzOTY5NTE=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1396951?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/getsentry",
+      "html_url": "https://github.com/getsentry",
+      "followers_url": "https://api.github.com/users/getsentry/followers",
+      "following_url": "https://api.github.com/users/getsentry/following{/other_user}",
+      "gists_url": "https://api.github.com/users/getsentry/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/getsentry/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/getsentry/subscriptions",
+      "organizations_url": "https://api.github.com/users/getsentry/orgs",
+      "repos_url": "https://api.github.com/users/getsentry/repos",
+      "events_url": "https://api.github.com/users/getsentry/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/getsentry/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/getsentry/sentry",
+    "description": "Sentry is cross-platform application monitoring, with a focus on error reporting.",
+    "fork": false,
+    "url": "https://api.github.com/repos/getsentry/sentry",
+    "forks_url": "https://api.github.com/repos/getsentry/sentry/forks",
+    "keys_url": "https://api.github.com/repos/getsentry/sentry/keys{/key_id}",
+    "collaborators_url": "https://api.github.com/repos/getsentry/sentry/collaborators{/collaborator}",
+    "teams_url": "https://api.github.com/repos/getsentry/sentry/teams",
+    "hooks_url": "https://api.github.com/repos/getsentry/sentry/hooks",
+    "issue_events_url": "https://api.github.com/repos/getsentry/sentry/issues/events{/number}",
+    "events_url": "https://api.github.com/repos/getsentry/sentry/events",
+    "assignees_url": "https://api.github.com/repos/getsentry/sentry/assignees{/user}",
+    "branches_url": "https://api.github.com/repos/getsentry/sentry/branches{/branch}",
+    "tags_url": "https://api.github.com/repos/getsentry/sentry/tags",
+    "blobs_url": "https://api.github.com/repos/getsentry/sentry/git/blobs{/sha}",
+    "git_tags_url": "https://api.github.com/repos/getsentry/sentry/git/tags{/sha}",
+    "git_refs_url": "https://api.github.com/repos/getsentry/sentry/git/refs{/sha}",
+    "trees_url": "https://api.github.com/repos/getsentry/sentry/git/trees{/sha}",
+    "statuses_url": "https://api.github.com/repos/getsentry/sentry/statuses/{sha}",
+    "languages_url": "https://api.github.com/repos/getsentry/sentry/languages",
+    "stargazers_url": "https://api.github.com/repos/getsentry/sentry/stargazers",
+    "contributors_url": "https://api.github.com/repos/getsentry/sentry/contributors",
+    "subscribers_url": "https://api.github.com/repos/getsentry/sentry/subscribers",
+    "subscription_url": "https://api.github.com/repos/getsentry/sentry/subscription",
+    "commits_url": "https://api.github.com/repos/getsentry/sentry/commits{/sha}",
+    "git_commits_url": "https://api.github.com/repos/getsentry/sentry/git/commits{/sha}",
+    "comments_url": "https://api.github.com/repos/getsentry/sentry/comments{/number}",
+    "issue_comment_url": "https://api.github.com/repos/getsentry/sentry/issues/comments{/number}",
+    "contents_url": "https://api.github.com/repos/getsentry/sentry/contents/{+path}",
+    "compare_url": "https://api.github.com/repos/getsentry/sentry/compare/{base}...{head}",
+    "merges_url": "https://api.github.com/repos/getsentry/sentry/merges",
+    "archive_url": "https://api.github.com/repos/getsentry/sentry/{archive_format}{/ref}",
+    "downloads_url": "https://api.github.com/repos/getsentry/sentry/downloads",
+    "issues_url": "https://api.github.com/repos/getsentry/sentry/issues{/number}",
+    "pulls_url": "https://api.github.com/repos/getsentry/sentry/pulls{/number}",
+    "milestones_url": "https://api.github.com/repos/getsentry/sentry/milestones{/number}",
+    "notifications_url": "https://api.github.com/repos/getsentry/sentry/notifications{?since,all,participating}",
+    "labels_url": "https://api.github.com/repos/getsentry/sentry/labels{/name}",
+    "releases_url": "https://api.github.com/repos/getsentry/sentry/releases{/id}",
+    "deployments_url": "https://api.github.com/repos/getsentry/sentry/deployments"
+  },
+  "head_repository": {
+    "id": 873328,
+    "node_id": "MDEwOlJlcG9zaXRvcnk4NzMzMjg=",
+    "name": "sentry",
+    "full_name": "getsentry/sentry",
+    "private": false,
+    "owner": {
+      "login": "getsentry",
+      "id": 1396951,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjEzOTY5NTE=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1396951?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/getsentry",
+      "html_url": "https://github.com/getsentry",
+      "followers_url": "https://api.github.com/users/getsentry/followers",
+      "following_url": "https://api.github.com/users/getsentry/following{/other_user}",
+      "gists_url": "https://api.github.com/users/getsentry/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/getsentry/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/getsentry/subscriptions",
+      "organizations_url": "https://api.github.com/users/getsentry/orgs",
+      "repos_url": "https://api.github.com/users/getsentry/repos",
+      "events_url": "https://api.github.com/users/getsentry/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/getsentry/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/getsentry/sentry",
+    "description": "Sentry is cross-platform application monitoring, with a focus on error reporting.",
+    "fork": false,
+    "url": "https://api.github.com/repos/getsentry/sentry",
+    "forks_url": "https://api.github.com/repos/getsentry/sentry/forks",
+    "keys_url": "https://api.github.com/repos/getsentry/sentry/keys{/key_id}",
+    "collaborators_url": "https://api.github.com/repos/getsentry/sentry/collaborators{/collaborator}",
+    "teams_url": "https://api.github.com/repos/getsentry/sentry/teams",
+    "hooks_url": "https://api.github.com/repos/getsentry/sentry/hooks",
+    "issue_events_url": "https://api.github.com/repos/getsentry/sentry/issues/events{/number}",
+    "events_url": "https://api.github.com/repos/getsentry/sentry/events",
+    "assignees_url": "https://api.github.com/repos/getsentry/sentry/assignees{/user}",
+    "branches_url": "https://api.github.com/repos/getsentry/sentry/branches{/branch}",
+    "tags_url": "https://api.github.com/repos/getsentry/sentry/tags",
+    "blobs_url": "https://api.github.com/repos/getsentry/sentry/git/blobs{/sha}",
+    "git_tags_url": "https://api.github.com/repos/getsentry/sentry/git/tags{/sha}",
+    "git_refs_url": "https://api.github.com/repos/getsentry/sentry/git/refs{/sha}",
+    "trees_url": "https://api.github.com/repos/getsentry/sentry/git/trees{/sha}",
+    "statuses_url": "https://api.github.com/repos/getsentry/sentry/statuses/{sha}",
+    "languages_url": "https://api.github.com/repos/getsentry/sentry/languages",
+    "stargazers_url": "https://api.github.com/repos/getsentry/sentry/stargazers",
+    "contributors_url": "https://api.github.com/repos/getsentry/sentry/contributors",
+    "subscribers_url": "https://api.github.com/repos/getsentry/sentry/subscribers",
+    "subscription_url": "https://api.github.com/repos/getsentry/sentry/subscription",
+    "commits_url": "https://api.github.com/repos/getsentry/sentry/commits{/sha}",
+    "git_commits_url": "https://api.github.com/repos/getsentry/sentry/git/commits{/sha}",
+    "comments_url": "https://api.github.com/repos/getsentry/sentry/comments{/number}",
+    "issue_comment_url": "https://api.github.com/repos/getsentry/sentry/issues/comments{/number}",
+    "contents_url": "https://api.github.com/repos/getsentry/sentry/contents/{+path}",
+    "compare_url": "https://api.github.com/repos/getsentry/sentry/compare/{base}...{head}",
+    "merges_url": "https://api.github.com/repos/getsentry/sentry/merges",
+    "archive_url": "https://api.github.com/repos/getsentry/sentry/{archive_format}{/ref}",
+    "downloads_url": "https://api.github.com/repos/getsentry/sentry/downloads",
+    "issues_url": "https://api.github.com/repos/getsentry/sentry/issues{/number}",
+    "pulls_url": "https://api.github.com/repos/getsentry/sentry/pulls{/number}",
+    "milestones_url": "https://api.github.com/repos/getsentry/sentry/milestones{/number}",
+    "notifications_url": "https://api.github.com/repos/getsentry/sentry/notifications{?since,all,participating}",
+    "labels_url": "https://api.github.com/repos/getsentry/sentry/labels{/name}",
+    "releases_url": "https://api.github.com/repos/getsentry/sentry/releases{/id}",
+    "deployments_url": "https://api.github.com/repos/getsentry/sentry/deployments"
+  }
+}

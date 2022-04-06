@@ -69,13 +69,13 @@ def get_extra_metadata(job):
     runs = get(job["run_url"]).json()
     meta = {
         "name": job["name"],  # This is the fallback value
-        "branch": runs.get("head_branch"),
-        "commit_sha": runs.get("head_sha"),
-        "user": runs["head_commit"]["author"],
+        "head_branch": runs.get("head_branch"),
+        "head_sha": runs.get("head_sha"),
+        "author": runs["head_commit"]["author"],
     }
     if runs.get("pull_requests"):
         meta[
-            "pr"
+            "pull_request"
         ] = f'https://github.com/{runs["head_repository"]["full_name"]}/pull/{runs["pull_requests"][0]["number"]}'
 
     try:
@@ -140,16 +140,19 @@ def _generate_trace(workflow):
     transaction = _base_transaction()
     # Transactions have name, spans don't.
     transaction["transaction"] = meta["name"]
-    transaction["user"] = meta["user"]
+    transaction["user"] = meta["author"]
     # When ingesting old data during development (e.g. using fixtures), Sentry's UI will
     # show an error for transactions with "Clock drift detected in SDK"; It is harmeless.
     transaction["start_timestamp"] = workflow["started_at"]
     transaction["timestamp"] = workflow["completed_at"]
 
     transaction["tags"] = {
-        "job_url": workflow["html_url"],  # points to the UI showing the job run
         "job_status": workflow["conclusion"],  # e.g. success, failure, skipped
-        "branch": meta["branch"],
+        "branch": meta["head_branch"],
+        # To create metrics of how often we re-run
+        "run_attempt": meta["run_attempt"],
+        # To filter jobs that run on a specific sha
+        "head_sha": meta["head_sha"],
     }
     if meta.get("pull_request"):
         transaction["tags"]["pull_request"] = meta["pull_request"]
@@ -168,19 +171,13 @@ def _generate_trace(workflow):
 
 def generate_trace(workflow):
     # This can happen when the workflow is skipped and there are no steps
-    if not workflow["steps"]:
-        # e.g. This happens
+    if workflow["conclusion"] == "skipped":
         logging.info(
-            f"We are ignoring '{workflow['name']}' for lack of tests -> {workflow['html_url']}"
+            f"We are ignoring '{workflow['name']}' because it was skipped -> {workflow['html_url']}"
         )
         return
-
-    return _generate_trace(workflow)
-
-
-def process_workflow(workflow_job):
-    envelope = Envelope()
-    trace = generate_trace(workflow_job)
+    trace = _generate_trace(workflow)
     if trace:
+        envelope = Envelope()
         envelope.add_transaction(trace)
         send_envelope(envelope)
