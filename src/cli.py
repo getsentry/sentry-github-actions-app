@@ -1,6 +1,6 @@
 import sys
 
-from trace import get, generate_trace
+from trace import get, send_trace
 
 # Point this script to the URL of a job and we will trace it
 # You give us this https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
@@ -14,7 +14,7 @@ if __name__ == "__main__":
         req = get(url)
         if not req.ok:
             raise Exception(req.text)
-        generate_trace(req.json())
+        send_trace(req.json())
     else:
         import json
 
@@ -22,4 +22,4 @@ if __name__ == "__main__":
         with open(argument) as f:
             data = json.load(f)
         # XXX: Switch over to handle_event
-        generate_trace(data["workflow_job"])
+        send_trace(data["workflow_job"])

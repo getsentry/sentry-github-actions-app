@@ -35,11 +35,6 @@ def handle_event(data, headers):
 def main():
     payload = {"reason": "There was an error."}
     http_code = 500
-    try:
-        payload, http_code = handle_event(request.json, request.headers)
-    except Exception as e:
-        # Report app issue to Sentry
-        capture_exception(e)
-        logging.exception(e)
+    payload, http_code = handle_event(request.json, request.headers)
 
     return jsonify(payload), http_code

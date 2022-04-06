@@ -6,7 +6,6 @@ import uuid
 from datetime import datetime
 
 import requests
-from sentry_sdk import capture_exception
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
@@ -67,25 +66,19 @@ def send_envelope(envelope):
 # XXX: This is a slow call
 def get_extra_metadata(job):
     runs = get(job["run_url"]).json()
+    workflow = get(runs["workflow_url"]).json()
     meta = {
-        "name": job["name"],  # This is the fallback value
+        # This provides human friendly transaction names
+        "name": f'{workflow["name"]}/{job["name"]}',
         "head_branch": runs.get("head_branch"),
         "head_sha": runs.get("head_sha"),
         "author": runs["head_commit"]["author"],
+        "run_attempt": runs["run_attempt"],
     }
     if runs.get("pull_requests"):
         meta[
             "pull_request"
         ] = f'https://github.com/{runs["head_repository"]["full_name"]}/pull/{runs["pull_requests"][0]["number"]}'
-
-    try:
-        workflow = get(runs["workflow_url"]).json()
-        # This provides human friendly transaction names
-        meta["name"] = f'{workflow["name"]}/{job["name"]}'
-    except Exception as e:
-        capture_exception(e)
-        logging.exception(e)
-        logging.error(f"Failed to determine job name -> {job['run_url']}")
 
     return meta
 
