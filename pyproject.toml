@@ -33,6 +33,7 @@ dev = [
     "black>=22.3.0",
     "pre-commit>=2.18.1",
     "pytest-cov>=3.0.0",
+    "responses>=0.20.0",
 ]
 
 [tool.pytest.ini_options]

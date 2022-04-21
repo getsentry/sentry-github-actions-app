@@ -4,8 +4,14 @@ import pytest
 
 
 @pytest.fixture
-def completed_workflow():
-    with open("tests/fixtures/wf_completed.json") as f:
+def workflow():
+    with open("tests/fixtures/workflow.json") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def runs():
+    with open("tests/fixtures/runs.json") as f:
         return json.load(f)
 
 
