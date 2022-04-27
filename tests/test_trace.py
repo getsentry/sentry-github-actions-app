@@ -1,9 +1,9 @@
 from unittest import mock
 
-import requests
 import responses
+from freezegun import freeze_time
 
-from src.trace import _base_transaction, send_trace
+from src.trace import _base_transaction, send_trace, _generate_trace
 from .fixtures import *
 
 
@@ -32,24 +32,22 @@ def test_base_transaction(mock_uuid):
     }
 
 
+@responses.activate
 def test_workflow_without_steps(skipped_workflow):
     assert send_trace(skipped_workflow) == None
 
 
+@mock.patch("src.trace.uuid.uuid4")
+@freeze_time()
 @responses.activate
-def test_workflow_without_steps(workflow, runs):
-    send_trace(workflow)
-
-
-#
-# def test_simple():
-#     responses.add(responses.GET, 'http://twitter.com/api/1/foobar',
-#                   json={'error': 'not found'}, status=404)
-
-#     resp = requests.get('http://twitter.com/api/1/foobar')
-
-#     assert resp.json() == {"error": "not found"}
-
-#     assert len(responses.calls) == 1
-#     assert responses.calls[0].request.url == 'http://twitter.com/api/1/foobar'
-#     assert responses.calls[0].response.text == '{"error": "not found"}'
+def test_workflow_basic_test(mock_uuid, jobA_job, jobA_runs, jobA_workflow, jobA_trace):
+    mock_uuid.return_value = UUID
+    responses.get(
+        "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
+        json=jobA_runs,
+    )
+    responses.get(
+        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
+        json=jobA_workflow,
+    )
+    assert _generate_trace(jobA_job) == jobA_trace

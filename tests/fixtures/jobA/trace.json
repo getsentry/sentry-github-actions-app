@@ -1,0 +1,174 @@
+{
+  "contexts": {
+    "trace": {
+      "description": "frontend tests (0)",
+      "op": "frontend tests (0)",
+      "span_id": "8defeba48bae1181",
+      "status": "ok",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f",
+      "type": "trace"
+    }
+  },
+  "event_id": "400139fbb73448468a8076bdbea89e52",
+  "spans": [
+    {
+      "name": "Set up job",
+      "op": "Set up job",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "82a7bc0413aa5f21",
+      "start_timestamp": "2022-04-06T19:52:16.000Z",
+      "timestamp": "2022-04-06T19:52:20.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Pull ghcr.io/getsentry/action-html-to-image:latest",
+      "op": "Pull ghcr.io/getsentry/action-html-to-image:latest",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "855a2f48b5ac00df",
+      "start_timestamp": "2022-04-06T19:52:20.000Z",
+      "timestamp": "2022-04-06T19:52:58.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Checkout sentry",
+      "op": "Checkout sentry",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "a9070621934bbe15",
+      "start_timestamp": "2022-04-06T19:52:58.000Z",
+      "timestamp": "2022-04-06T19:53:03.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Run volta-cli/action@v1",
+      "op": "Run volta-cli/action@v1",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "918e11b078143114",
+      "start_timestamp": "2022-04-06T19:53:03.000Z",
+      "timestamp": "2022-04-06T19:53:05.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Get yarn cache directory path",
+      "op": "Get yarn cache directory path",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "81641c48fbad080b",
+      "start_timestamp": "2022-04-06T19:53:05.000Z",
+      "timestamp": "2022-04-06T19:53:06.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Run actions/cache@v1",
+      "op": "Run actions/cache@v1",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "b76c316a326d8270",
+      "start_timestamp": "2022-04-06T19:53:07.000Z",
+      "timestamp": "2022-04-06T19:53:23.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Install dependencies",
+      "op": "Install dependencies",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "b9f7254ab49762dd",
+      "start_timestamp": "2022-04-06T19:53:23.000Z",
+      "timestamp": "2022-04-06T19:53:56.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Build CSS",
+      "op": "Build CSS",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "9c8469e7c799b721",
+      "start_timestamp": "2022-04-06T19:53:56.000Z",
+      "timestamp": "2022-04-06T19:54:04.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "jest",
+      "op": "jest",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "b324ff68940dd642",
+      "start_timestamp": "2022-04-06T19:54:04.000Z",
+      "timestamp": "2022-04-06T20:05:01.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Save HTML artifacts",
+      "op": "Save HTML artifacts",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "b5143d164e4024e9",
+      "start_timestamp": "2022-04-06T20:05:02.000Z",
+      "timestamp": "2022-04-06T20:05:08.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Create Images from HTML",
+      "op": "Create Images from HTML",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "86d62ed19034e24e",
+      "start_timestamp": "2022-04-06T20:05:09.000Z",
+      "timestamp": "2022-04-06T20:05:28.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Save snapshots",
+      "op": "Save snapshots",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "a2e2b3b8fefc9c72",
+      "start_timestamp": "2022-04-06T20:05:29.000Z",
+      "timestamp": "2022-04-06T20:05:30.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Handle artifacts",
+      "op": "Handle artifacts",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "9a8dc7664c31eeca",
+      "start_timestamp": "2022-04-06T20:05:31.000Z",
+      "timestamp": "2022-04-06T20:05:34.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Post Run actions/cache@v1",
+      "op": "Post Run actions/cache@v1",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "a17c8b71cd17a5bc",
+      "start_timestamp": "2022-04-06T20:05:35.000Z",
+      "timestamp": "2022-04-06T20:05:35.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Post Checkout sentry",
+      "op": "Post Checkout sentry",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "ba9039c9a96276dd",
+      "start_timestamp": "2022-04-06T20:05:37.000Z",
+      "timestamp": "2022-04-06T20:05:35.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    },
+    {
+      "name": "Complete job",
+      "op": "Complete job",
+      "parent_span_id": "8defeba48bae1181",
+      "span_id": "800b2d855f3a3c68",
+      "start_timestamp": "2022-04-06T20:05:35.000Z",
+      "timestamp": "2022-04-06T20:05:35.000Z",
+      "trace_id": "4225da545ce24bbe8e8422035cd3741f"
+    }
+  ],
+  "start_timestamp": "2022-04-06T19:52:17Z",
+  "tags": {
+    "branch": "ahmed/add-naming-layer",
+    "head_sha": "fd976218a94d8a0cd203c711ea7dbe68c573ef4d",
+    "job_status": "success",
+    "pull_request": "https://github.com/getsentry/sentry/pull/33347",
+    "run_attempt": 1
+  },
+  "timestamp": "2022-04-06T20:05:37Z",
+  "transaction": "acceptance/frontend tests (0)",
+  "type": "transaction",
+  "user": {
+    "email": "ahmed.etefy12@gmail.com",
+    "name": "Ahmed Etefy"
+  }
+}
