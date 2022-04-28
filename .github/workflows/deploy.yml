@@ -30,8 +30,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Github context
+        run: |
+          jq . <<EOF
+            ${{ toJSON(github) }}
+          EOF
+
       - name: Setup Cloud SDK
-        if: github.head_ref == 'deployments'
+        # if: github.head_ref == 'deployments'
         uses: google-github-actions/setup-gcloud@v0.6.0
         with:
           project_id: ${{ env.PROJECT_ID }}
@@ -40,7 +46,7 @@ jobs:
 
       # This gives the ability to push to the Google Registr
       - name: Authorize Docker push
-        if: github.head_ref == 'deployments'
+        # if: github.head_ref == 'deployments'
         run: gcloud auth configure-docker
 
       - name: Build and run container
@@ -52,7 +58,7 @@ jobs:
           docker stop $(docker ps -aq)
 
       - name: Push container
-        if: github.head_ref == 'deployments'
+        # if: github.head_ref == 'deployments'
         run: |-
           docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
 
