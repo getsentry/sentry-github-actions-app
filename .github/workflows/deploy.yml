@@ -30,15 +30,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Github context
-        run: |
-          jq . <<EOF
-            ${{ toJSON(github) }}
-          EOF
-
       - name: Setup Cloud SDK
-        # if: github.head_ref == 'deployments'
-        uses: google-github-actions/setup-gcloud@v0.6.0
+        if: github.head_ref == 'refs/heads/deployments'
+        uses: google-github-actions/setup-gcloud@v0.5.0
         with:
           project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
@@ -46,19 +40,21 @@ jobs:
 
       # This gives the ability to push to the Google Registr
       - name: Authorize Docker push
-        # if: github.head_ref == 'deployments'
+        if: github.head_ref == 'refs/heads/deployments'
         run: gcloud auth configure-docker
 
       - name: Build and run container
+        env:
+          FOO: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         run: |-
-          echo "$GOOGLE_APPLICATION_CREDENTIALS" | base64 -d | docker login -u _json_key --password-stdin https://us.gcr.io
+          echo "$FOO" | base64 -d | docker login -u _json_key --password-stdin us.gcr.io
           docker pull us.gcr.io/sentry-dev-tooling/github-actions-app/github-actions-app@sha256:a83fb4f833c9d7759705a463f91a336b5cb7b4c18e1912ed2dfae2933c10c35e
           docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
           docker run -d --rm us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
           docker stop $(docker ps -aq)
 
       - name: Push container
-        # if: github.head_ref == 'deployments'
+        if: github.head_ref == 'refs/heads/deployments'
         run: |-
           docker push us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
 
