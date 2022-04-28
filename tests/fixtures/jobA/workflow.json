@@ -1,0 +1,12 @@
+{
+  "id": 1174556,
+  "node_id": "MDg6V29ya2Zsb3cxMTc0NTU2",
+  "name": "acceptance",
+  "path": ".github/workflows/acceptance.yml",
+  "state": "active",
+  "created_at": "2020-05-01T23:00:30.000Z",
+  "updated_at": "2022-03-17T18:24:06.000Z",
+  "url": "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
+  "html_url": "https://github.com/getsentry/sentry/blob/master/.github/workflows/acceptance.yml",
+  "badge_url": "https://github.com/getsentry/sentry/workflows/acceptance/badge.svg"
+}
