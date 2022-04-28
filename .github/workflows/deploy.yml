@@ -30,9 +30,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Remove
+      - name: Build & push
         run: |
-          rm /home/runner/.docker/config.json
+          docker pull busybox
+          docker tag busybox ghcr.io/armenzg/busybox
+          docker push ghcr.io/armenzg/busybox
+          docker build -t ghcr.io/armenzg/$SERVICE:$GITHUB_SHA .
+          docker run -d --rm ghcr.io/armenzg/$SERVICE:$GITHUB_SHA
+          docker stop $(docker ps -aq)
 
       - name: Setup Cloud SDK
         if: github.ref == 'refs/heads/deployments'
@@ -46,16 +51,6 @@ jobs:
       - name: Authorize Docker push
         if: github.ref == 'refs/heads/deployments'
         run: gcloud auth configure-docker
-
-      - name: Build & push
-        run: |
-          cat /home/runner/.docker/config.json
-          cat $GOOGLE_APPLICATION_CREDENTIALS
-          gcloud auth configure-docker
-          cat /home/runner/.docker/config.json
-          docker pull busybox
-          docker tag busybox us.gcr.io/sentry-dev-tooling/busybox
-          docker push us.gcr.io/sentry-dev-tooling/busybox
 
       # - name: Build and run container
       #   env:
