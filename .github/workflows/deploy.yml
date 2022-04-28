@@ -30,6 +30,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Github context
+        run: |
+          jq . <<EOF
+            ${{ toJSON(github) }}
+          EOF
+
       - name: Build and run container
         run: |-
           docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
