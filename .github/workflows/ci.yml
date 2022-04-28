@@ -5,7 +5,7 @@ on:
 
 jobs:
   docker-build:
-    name: Unit tests
+    name: Docker build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
