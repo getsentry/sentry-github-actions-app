@@ -41,7 +41,7 @@ dev = [
 # -ra:  Show extra test summary info: (a)ll except passed
 # -q:   Decrease verbosity
 # --lf: Rerun only the tests that failed at the last run (or all if none failed)
-addopts = "-ra -q --lf"
+addopts = "-ra -q"
 testpaths = [ "tests" ]
 
 [build-system]
