@@ -17,6 +17,7 @@ jobs:
           docker build -t docker-app .
 
       - name: Test starting
+        run: |
           docker run -d --rm docker-app
           docker stop $(docker ps -aq)
 
