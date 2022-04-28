@@ -30,6 +30,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Remove
+        run: |
+          rm /home/runner/.docker/config.json
+
       - name: Setup Cloud SDK
         if: github.ref == 'refs/heads/deployments'
         uses: google-github-actions/setup-gcloud@v0.2.1
