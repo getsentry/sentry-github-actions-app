@@ -23,10 +23,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-deploy:
-    name: build and deploy
+  build-publish:
+    name: Build and publish
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Controls Github token permissions
     permissions:
       contents: read
       packages: write
@@ -35,6 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      # Steps based on https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
@@ -56,6 +58,17 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy:
+    name: Deploy
+    needs: build-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Controls Github token permissions
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
       - name: Setup Cloud SDK
         if: github.ref == 'refs/heads/deployments'
         uses: google-github-actions/setup-gcloud@v0.2.1
@@ -66,9 +79,9 @@ jobs:
 
       - name: Deploy to Cloud Run
         # XXX: This should not run on my PR
-        if: github.ref == 'refs/heads/main'
+        # if: github.ref == 'refs/heads/main'
         uses: google-github-actions/deploy-cloudrun@v0.5.0
         with:
           service: ${{ env.SERVICE }}
-          image: us.gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           region: us-central1
