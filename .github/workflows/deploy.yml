@@ -50,6 +50,9 @@ jobs:
       - name: Build & push
         run: |
           cat /home/runner/.docker/config.json
+          cat $GOOGLE_APPLICATION_CREDENTIALS
+          gcloud auth configure-docker
+          cat /home/runner/.docker/config.json
           docker pull busybox
           docker tag busybox us.gcr.io/sentry-dev-tooling/busybox
           docker push us.gcr.io/sentry-dev-tooling/busybox
