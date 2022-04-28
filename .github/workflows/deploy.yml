@@ -43,15 +43,21 @@ jobs:
         if: github.ref == 'refs/heads/deployments'
         run: gcloud auth configure-docker
 
-      - name: Build and run container
-        env:
-          FOO: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: |-
-          echo "$FOO" | base64 -d | docker login -u _json_key --password-stdin us.gcr.io
-          docker pull us.gcr.io/sentry-dev-tooling/github-actions-app/github-actions-app@sha256:a83fb4f833c9d7759705a463f91a336b5cb7b4c18e1912ed2dfae2933c10c35e
-          docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
-          docker run -d --rm us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
-          docker stop $(docker ps -aq)
+      - name: Build & push
+        run: |
+          docker pull busybox
+          docker tag busybox us.gcr.io/sentry-dev-tooling/busybox
+          docker push us.gcr.io/sentry-dev-tooling/busybox
+
+      # - name: Build and run container
+      #   env:
+      #     FOO: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      #   run: |-
+      #     echo "$FOO" | base64 -d | docker login -u _json_key --password-stdin us.gcr.io
+      #     docker pull us.gcr.io/sentry-dev-tooling/github-actions-app/github-actions-app@sha256:a83fb4f833c9d7759705a463f91a336b5cb7b4c18e1912ed2dfae2933c10c35e
+      #     docker build -t us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
+      #     docker run -d --rm us.gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
+      #     docker stop $(docker ps -aq)
 
       - name: Push container
         if: github.ref == 'refs/heads/deployments'
