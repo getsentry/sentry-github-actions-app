@@ -31,8 +31,6 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build & push
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
         run: |
           docker pull busybox
           docker tag busybox ghcr.io/armenzg/busybox
