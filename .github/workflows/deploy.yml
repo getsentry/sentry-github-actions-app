@@ -38,7 +38,7 @@ jobs:
           service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           export_default_credentials: true # Set to true to authenticate the Cloud Run action
 
-      # This gives the ability to push to the Google Registry
+      # This gives the ability to push to the Google Registr
       - name: Authorize Docker push
         if: github.head_ref == 'deployments'
         run: gcloud auth configure-docker
