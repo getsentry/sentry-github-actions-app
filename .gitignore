@@ -131,3 +131,6 @@ dmypy.json
 # PDM
 .pdm.toml
 __pypackages__/
+
+# Ignore generated credentials from google-github-actions/auth
+gha-creds-*.json
