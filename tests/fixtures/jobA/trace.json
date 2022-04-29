@@ -1,15 +1,18 @@
 {
   "contexts": {
     "trace": {
+      "data": {
+        "job_url": "https://github.com/getsentry/sentry/runs/5857527450?check_suite_focus=true"
+      },
       "description": "frontend tests (0)",
       "op": "frontend tests (0)",
       "span_id": "a401d83c7ec0495f",
       "status": "ok",
-      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7",
+      "trace_id": "81b0bea6aedf4817a74d32d706908df2",
       "type": "trace"
     }
   },
-  "event_id": "81b0bea6aedf4817a74d32d706908df2",
+  "event_id": "5ae279acd9824cbfa85042013cfbf8b7",
   "spans": [
     {
       "name": "Set up job",
@@ -18,7 +21,7 @@
       "span_id": "0726fb4a2341477c",
       "start_timestamp": "2022-04-06T19:52:16.000Z",
       "timestamp": "2022-04-06T19:52:20.000Z",
-      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
+      "trace_id": "81b0bea6aedf4817a74d32d706908df2"
     },
     {
       "name": "Pull ghcr.io/getsentry/action-html-to-image:latest",
@@ -27,7 +30,7 @@
       "span_id": "a7776ed12daa449b",
       "start_timestamp": "2022-04-06T19:52:20.000Z",
       "timestamp": "2022-04-06T19:52:58.000Z",
-      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
+      "trace_id": "81b0bea6aedf4817a74d32d706908df2"
     },
     {
       "name": "Post Checkout sentry",
@@ -36,7 +39,7 @@
       "span_id": "6e147ff372f9498a",
       "start_timestamp": "2022-04-06T20:05:37.000Z",
       "timestamp": "2022-04-06T20:05:35.000Z",
-      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
+      "trace_id": "81b0bea6aedf4817a74d32d706908df2"
     },
     {
       "name": "Complete job",
@@ -45,7 +48,7 @@
       "span_id": "498cceede5f14fd9",
       "start_timestamp": "2022-04-06T20:05:35.000Z",
       "timestamp": "2022-04-06T20:05:35.000Z",
-      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
+      "trace_id": "81b0bea6aedf4817a74d32d706908df2"
     }
   ],
   "start_timestamp": "2022-04-06T19:52:17Z",
@@ -54,10 +57,11 @@
     "head_sha": "fd976218a94d8a0cd203c711ea7dbe68c573ef4d",
     "job_status": "success",
     "pull_request": "https://github.com/getsentry/sentry/pull/33347",
-    "run_attempt": 1
+    "run_attempt": 1,
+    "workflow": "acceptance.yml"
   },
   "timestamp": "2022-04-06T20:05:37Z",
-  "transaction": "acceptance/frontend tests (0)",
+  "transaction": "frontend tests (0)",
   "type": "transaction",
   "user": {
     "email": "ahmed.etefy12@gmail.com",
