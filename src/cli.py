@@ -5,7 +5,7 @@ from trace import get, send_trace
 # Point this script to the URL of a job and we will trace it
 # You give us this https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
 # Or give it a path to a file with a webhook payload
-# e.g. tests/fixtures/failed_workflow.json
+# e.g. tests/fixtures/jobA/job.json
 if __name__ == "__main__":
     argument = sys.argv[1]
     if argument.startswith("https"):
@@ -21,5 +21,4 @@ if __name__ == "__main__":
         data = {}
         with open(argument) as f:
             data = json.load(f)
-        # XXX: Switch over to handle_event
-        send_trace(data["workflow_job"])
+        send_trace(data)
