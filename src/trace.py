@@ -68,8 +68,9 @@ def get_extra_metadata(job):
     runs = get(job["run_url"]).json()
     workflow = get(runs["workflow_url"]).json()
     meta = {
-        # This provides human friendly transaction names
-        "name": f'{workflow["name"]}/{job["name"]}',
+        "workflow_name": workflow["name"],
+        # .github/workflows/foo.yml -> foo.yml
+        "workflow_path": workflow["path"].rsplit("/")[-1],
         "head_branch": runs.get("head_branch"),
         "head_sha": runs.get("head_sha"),
         "author": runs["head_commit"]["author"],
@@ -83,22 +84,24 @@ def get_extra_metadata(job):
     return meta
 
 
-def _base_transaction():
-    trace_id = get_uuid()
-    parent_span_id = get_uuid()[:16]
+def _base_transaction(job):
     return {
         "event_id": get_uuid(),
         # The distinctive feature of a Transaction is type: "transaction".
         "type": "transaction",
-        "transaction": "default",
+        "transaction": job["name"],
         "contexts": {
             "trace": {
-                "trace_id": trace_id,
-                "span_id": parent_span_id,
+                "span_id": get_uuid()[:16],
+                "trace_id": get_uuid(),
                 "type": "trace",
             },
         },
         "user": {},
+        # When ingesting old data during development (e.g. using fixtures), Sentry's UI will
+        # show an error for transactions with "Clock drift detected in SDK"; It is harmeless.
+        "start_timestamp": job["started_at"],
+        "timestamp": job["completed_at"],
     }
 
 
@@ -127,34 +130,36 @@ github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 # Documentation about traces, transactions and spans
 # https://docs.sentry.io/product/sentry-basics/tracing/distributed-tracing/#traces
 # https://develop.sentry.dev/sdk/performance/
-def _generate_trace(workflow):
-    meta = get_extra_metadata(workflow)
-    transaction = _base_transaction()
+def _generate_trace(job):
+    meta = get_extra_metadata(job)
+    transaction = _base_transaction(job)
     # Transactions have name, spans don't.
-    transaction["transaction"] = meta["name"]
     transaction["user"] = meta["author"]
-    # When ingesting old data during development (e.g. using fixtures), Sentry's UI will
-    # show an error for transactions with "Clock drift detected in SDK"; It is harmeless.
-    transaction["start_timestamp"] = workflow["started_at"]
-    transaction["timestamp"] = workflow["completed_at"]
-
     transaction["tags"] = {
-        "job_status": workflow["conclusion"],  # e.g. success, failure, skipped
+        "job_status": job["conclusion"],  # e.g. success, failure, skipped
         "branch": meta["head_branch"],
         # To create metrics of how often we re-run
         "run_attempt": meta["run_attempt"],
         # To filter jobs that run on a specific sha
         "head_sha": meta["head_sha"],
+        # Workflow name as a tag. It allows querying jobs within the same workflow
+        "workflow": meta["workflow_path"],
     }
     if meta.get("pull_request"):
         transaction["tags"]["pull_request"] = meta["pull_request"]
-    transaction["contexts"]["trace"]["op"] = workflow["name"]
-    transaction["contexts"]["trace"]["description"] = workflow["name"]
+
+    # https://getsentry.atlassian.net/browse/TET-22
+    # Tags are not linkified externally, plain text data can be selected in browsers and opened
+    transaction["contexts"]["trace"]["data"] = {
+        "job_url": job["html_url"],
+    }
+    transaction["contexts"]["trace"]["op"] = job["name"]
+    transaction["contexts"]["trace"]["description"] = job["name"]
     transaction["contexts"]["trace"]["status"] = github_status_trace_status.get(
-        workflow["conclusion"], "unimplemented"
+        job["conclusion"], "unimplemented"
     )
     transaction["spans"] = _generate_spans(
-        workflow["steps"],
+        job["steps"],
         transaction["contexts"]["trace"]["span_id"],
         transaction["contexts"]["trace"]["trace_id"],
     )

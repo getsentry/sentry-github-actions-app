@@ -8,33 +8,36 @@ from .fixtures import *
 
 
 @patch("src.trace.get_uuid")
-def test_base_transaction(mock_get_uuid, uuid_list):
+def test_base_transaction(mock_get_uuid, jobA_job, uuid_list):
     mock_get_uuid.side_effect = uuid_list
 
-    assert _base_transaction() == {
+    assert _base_transaction(jobA_job) == {
+        "event_id": uuid_list[0],
         "contexts": {
             "trace": {
                 "span_id": uuid_list[1][:16],
-                "trace_id": uuid_list[0],
+                "trace_id": uuid_list[2],
                 "type": "trace",
             }
         },
-        "event_id": uuid_list[2],
         "transaction": "default",
         "type": "transaction",
         "user": {},
+        "start_timestamp": "2022-04-06T19:52:17Z",
+        "timestamp": "2022-04-06T20:05:37Z",
+        "transaction": "frontend tests (0)",
     }
 
 
 @responses.activate
-def test_workflow_without_steps(skipped_workflow):
+def test_job_without_steps(skipped_workflow):
     assert send_trace(skipped_workflow) == None
 
 
 @freeze_time()
 @responses.activate
 @patch("src.trace.get_uuid")
-def test_workflow_basic_test(
+def test_job_basic_test(
     mock_get_uuid, jobA_job, jobA_runs, jobA_workflow, jobA_trace, uuid_list
 ):
     mock_get_uuid.side_effect = uuid_list
