@@ -9,13 +9,7 @@ import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
-LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
-logger = logging.getLogger(__name__)
-logger.setLevel(LOGGING_LEVEL)
-
-# create logger
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logging.basicConfig(level=os.environ.get("LOGGING_LEVEL", "INFO"))
 
 # We need an authorized token to fetch the API. If you have SSO on your org you will need to grant permission
 # Your app and the Github webhook will share this secret
@@ -35,11 +29,17 @@ def get(url):
     return req
 
 
+def get_uuid():
+    return uuid.uuid4().hex
+
+
 def send_envelope(envelope):
+    if not SENTRY_GITHUB_DSN:
+        return None
     base_uri, project_id = SENTRY_GITHUB_DSN.rsplit("/", 1)
     sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
     headers = {
-        "event_id": uuid.uuid4().hex,  # Does this have to match anything?
+        "event_id": get_uuid(),  # Does this have to match anything?
         "sent_at": format_timestamp(datetime.utcnow()),
         "Content-Type": "application/x-sentry-envelope",
         "Content-Encoding": "gzip",
@@ -84,10 +84,10 @@ def get_extra_metadata(job):
 
 
 def _base_transaction():
-    trace_id = uuid.uuid4().hex
-    parent_span_id = uuid.uuid4().hex[16:]
+    trace_id = get_uuid()
+    parent_span_id = get_uuid()[:16]
     return {
-        "event_id": uuid.uuid4().hex,
+        "event_id": get_uuid(),
         # The distinctive feature of a Transaction is type: "transaction".
         "type": "transaction",
         "transaction": "default",
@@ -112,14 +112,13 @@ def _generate_spans(steps, parent_span_id, trace_id):
                     "op": step["name"],
                     "name": step["name"],
                     "parent_span_id": parent_span_id,
-                    "span_id": uuid.uuid4().hex[16:],
+                    "span_id": get_uuid()[:16],
                     "start_timestamp": step["started_at"],
                     "timestamp": step["completed_at"],
                     "trace_id": trace_id,
                 }
             )
         except Exception as e:
-            capture_exception(e)
             logging.exception(e)
     return spans
 

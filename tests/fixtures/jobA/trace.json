@@ -3,157 +3,49 @@
     "trace": {
       "description": "frontend tests (0)",
       "op": "frontend tests (0)",
-      "span_id": "8b7f874be7d41568",
+      "span_id": "a401d83c7ec0495f",
       "status": "ok",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568",
+      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7",
       "type": "trace"
     }
   },
-  "event_id": "06a005dd99324b5e8b7f874be7d41568",
+  "event_id": "81b0bea6aedf4817a74d32d706908df2",
   "spans": [
     {
       "name": "Set up job",
       "op": "Set up job",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
+      "parent_span_id": "a401d83c7ec0495f",
+      "span_id": "0726fb4a2341477c",
       "start_timestamp": "2022-04-06T19:52:16.000Z",
       "timestamp": "2022-04-06T19:52:20.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
+      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
     },
     {
       "name": "Pull ghcr.io/getsentry/action-html-to-image:latest",
       "op": "Pull ghcr.io/getsentry/action-html-to-image:latest",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
+      "parent_span_id": "a401d83c7ec0495f",
+      "span_id": "a7776ed12daa449b",
       "start_timestamp": "2022-04-06T19:52:20.000Z",
       "timestamp": "2022-04-06T19:52:58.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Checkout sentry",
-      "op": "Checkout sentry",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:52:58.000Z",
-      "timestamp": "2022-04-06T19:53:03.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Run volta-cli/action@v1",
-      "op": "Run volta-cli/action@v1",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:53:03.000Z",
-      "timestamp": "2022-04-06T19:53:05.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Get yarn cache directory path",
-      "op": "Get yarn cache directory path",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:53:05.000Z",
-      "timestamp": "2022-04-06T19:53:06.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Run actions/cache@v1",
-      "op": "Run actions/cache@v1",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:53:07.000Z",
-      "timestamp": "2022-04-06T19:53:23.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Install dependencies",
-      "op": "Install dependencies",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:53:23.000Z",
-      "timestamp": "2022-04-06T19:53:56.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Build CSS",
-      "op": "Build CSS",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:53:56.000Z",
-      "timestamp": "2022-04-06T19:54:04.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "jest",
-      "op": "jest",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T19:54:04.000Z",
-      "timestamp": "2022-04-06T20:05:01.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Save HTML artifacts",
-      "op": "Save HTML artifacts",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T20:05:02.000Z",
-      "timestamp": "2022-04-06T20:05:08.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Create Images from HTML",
-      "op": "Create Images from HTML",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T20:05:09.000Z",
-      "timestamp": "2022-04-06T20:05:28.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Save snapshots",
-      "op": "Save snapshots",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T20:05:29.000Z",
-      "timestamp": "2022-04-06T20:05:30.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Handle artifacts",
-      "op": "Handle artifacts",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T20:05:31.000Z",
-      "timestamp": "2022-04-06T20:05:34.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
-    },
-    {
-      "name": "Post Run actions/cache@v1",
-      "op": "Post Run actions/cache@v1",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
-      "start_timestamp": "2022-04-06T20:05:35.000Z",
-      "timestamp": "2022-04-06T20:05:35.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
+      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
     },
     {
       "name": "Post Checkout sentry",
       "op": "Post Checkout sentry",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
+      "parent_span_id": "a401d83c7ec0495f",
+      "span_id": "6e147ff372f9498a",
       "start_timestamp": "2022-04-06T20:05:37.000Z",
       "timestamp": "2022-04-06T20:05:35.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
+      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
     },
     {
       "name": "Complete job",
       "op": "Complete job",
-      "parent_span_id": "8b7f874be7d41568",
-      "span_id": "8b7f874be7d41568",
+      "parent_span_id": "a401d83c7ec0495f",
+      "span_id": "498cceede5f14fd9",
       "start_timestamp": "2022-04-06T20:05:35.000Z",
       "timestamp": "2022-04-06T20:05:35.000Z",
-      "trace_id": "06a005dd99324b5e8b7f874be7d41568"
+      "trace_id": "5ae279acd9824cbfa85042013cfbf8b7"
     }
   ],
   "start_timestamp": "2022-04-06T19:52:17Z",

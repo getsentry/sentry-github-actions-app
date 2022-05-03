@@ -47,8 +47,8 @@ You can ingest a single job without webhooks or starting the app by using the cl
 ```shell
 # This is a normal URL of a job on Github
 pdm run ingest https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
-# This is desgined to test processing a Github webhook event
-pdm run ingest tests/fixtures/failed_workflow.json
+# From test fixture
+pdm run ingest tests/fixtures/jobA/job.json
 ```
 
 Steps to ingest events from a repository:

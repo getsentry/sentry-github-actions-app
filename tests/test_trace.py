@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import responses
 from freezegun import freeze_time
@@ -7,28 +7,19 @@ from src.trace import _base_transaction, send_trace, _generate_trace
 from .fixtures import *
 
 
-HEX = "06a005dd99324b5e8b7f874be7d41568"
-
-
-class UUID:
-    def __init__(self, value):
-        self.hex = value
-
-
-@patch("src.trace.uuid.uuid4")
-def test_base_transaction(mock_uuid):
-    # XXX: Calling this should give us different values each time
-    mock_uuid.return_value = UUID(HEX)
+@patch("src.trace.get_uuid")
+def test_base_transaction(mock_get_uuid, uuid_list):
+    mock_get_uuid.side_effect = uuid_list
 
     assert _base_transaction() == {
         "contexts": {
             "trace": {
-                "span_id": HEX[16:],
-                "trace_id": HEX,
+                "span_id": uuid_list[1][:16],
+                "trace_id": uuid_list[0],
                 "type": "trace",
             }
         },
-        "event_id": HEX,
+        "event_id": uuid_list[2],
         "transaction": "default",
         "type": "transaction",
         "user": {},
@@ -42,10 +33,11 @@ def test_workflow_without_steps(skipped_workflow):
 
 @freeze_time()
 @responses.activate
-@patch("src.trace.uuid.uuid4")
-def test_workflow_basic_test(mock_uuid, jobA_job, jobA_runs, jobA_workflow, jobA_trace):
-    # XXX: Calling this should give us different values each time
-    mock_uuid.return_value = UUID(HEX)
+@patch("src.trace.get_uuid")
+def test_workflow_basic_test(
+    mock_get_uuid, jobA_job, jobA_runs, jobA_workflow, jobA_trace, uuid_list
+):
+    mock_get_uuid.side_effect = uuid_list
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
         json=jobA_runs,
