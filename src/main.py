@@ -3,6 +3,7 @@ import os
 
 import sentry_sdk
 from flask import jsonify, request, Flask
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 from .github_sdk import send_trace
 
@@ -10,12 +11,13 @@ APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
     # This tracks errors and performance of the app itself rather than GH workflows
     sentry_sdk.init(
-        APP_DSN,
+        dsn=APP_DSN,
+        integrations=[FlaskIntegration()],
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
-        environment="development",
+        environment=os.environ.get("FLASK_ENV", "production"),
     )
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
