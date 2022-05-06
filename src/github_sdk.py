@@ -58,9 +58,7 @@ def send_envelope(envelope):
         envelope.serialize_into(f)
 
     req = requests.post(url, data=body.getvalue(), headers=headers)
-    if not req.ok:
-        raise Exception(req.text)
-    return req
+    req.raise_for_status()
 
 
 # XXX: This is a slow call

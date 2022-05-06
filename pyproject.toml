@@ -19,8 +19,7 @@ Homepage = "https://github.com/armenzg/github-actions-app"
 [project.optional-dependencies]
 [tool.pdm.scripts]
 start = "flask run -p 5001"
-test = "pytest"
-coverage = "pytest --cov=src --cov-report=html && open htmlcov/index.html"
+test = "pytest --cov=src --cov-report=html"
 ingest = "python src/cli.py"
 # You will need to install this binary in your host
 # https://watchexec.github.io/index.html
@@ -41,8 +40,12 @@ dev = [
 # -ra:  Show extra test summary info: (a)ll except passed
 # -q:   Decrease verbosity
 # --lf: Rerun only the tests that failed at the last run (or all if none failed)
-addopts = "-ra -q"
+addopts = "-ra -q -v -m 'not webapp'"
 testpaths = [ "tests" ]
+markers = [
+    "webapp: marks tests to require running against app (deselect with '-m \"not app\"')",
+    "serial",
+]
 
 [build-system]
 requires = ["pdm-pep517>=0.12.0"]

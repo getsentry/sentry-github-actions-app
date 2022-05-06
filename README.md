@@ -5,7 +5,7 @@ It works by listening to a Github workflow events via a webhook in your reposito
 
 `github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
 
-`main.py` contains the code to respond to webhook events. Business logic can be placed there.
+`webapp.py` contains the code to respond to webhook events. Business logic can be placed there.
 
 ## Set up
 
