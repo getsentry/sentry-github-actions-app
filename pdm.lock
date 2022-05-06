@@ -334,7 +334,7 @@ summary = "The comprehensive WSGI web application library."
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:91bd6bcebe3b8a3bf4fcc0fad85506764656352f60448a5ffacd134403071c5d"
+content_hash = "sha256:df418efe8870f2fe3303c57bbfeb8c409c1bb451b45258ed341f58d9cea4d5c9"
 
 [metadata.files]
 "atomicwrites 1.4.0" = [
