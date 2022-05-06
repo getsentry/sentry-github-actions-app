@@ -41,7 +41,11 @@ jobs:
 
       - name: Run tests
         run: |
-          pdm run test
+          pdm run test-ci
+
+      - uses: codecov/codecov-action@v2
+        with:
+          verbose: true # optional (default = false)
 
   pre-commit-checks:
     name: Pre-commit checks
