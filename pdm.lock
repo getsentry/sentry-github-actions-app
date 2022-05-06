@@ -25,11 +25,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blinker"
-version = "1.4"
-summary = "Fast, simple object-to-object and broadcast signaling"
-
-[[package]]
 name = "certifi"
 version = "2021.10.8"
 summary = "Python package for providing Mozilla's CA Bundle."
@@ -282,22 +277,11 @@ dependencies = [
 
 [[package]]
 name = "sentry-sdk"
-version = "1.5.8"
+version = "1.5.11"
 summary = "Python client for Sentry (https://sentry.io)"
 dependencies = [
     "certifi",
     "urllib3>=1.10.0",
-]
-
-[[package]]
-name = "sentry-sdk"
-version = "1.5.11"
-extras = ["flask"]
-summary = "Python client for Sentry (https://sentry.io)"
-dependencies = [
-    "blinker>=1.1",
-    "flask>=0.11",
-    "sentry-sdk",
 ]
 
 [[package]]
@@ -350,7 +334,7 @@ summary = "The comprehensive WSGI web application library."
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:9ba3d8753a6917d2e9d28880e3f87cf7486bad672b52298316b4e9a98034a76e"
+content_hash = "sha256:19718a515e800ebc1aa80051b97e84a2a2d5dcd85acec377bad44f17c5a016fd"
 
 [metadata.files]
 "atomicwrites 1.4.0" = [
@@ -385,9 +369,6 @@ content_hash = "sha256:9ba3d8753a6917d2e9d28880e3f87cf7486bad672b52298316b4e9a98
     {file = "black-22.3.0-cp39-cp39-win_amd64.whl", hash = "sha256:9b542ced1ec0ceeff5b37d69838106a6348e60db7b8fdd245294dc1d26136265"},
     {file = "black-22.3.0-py3-none-any.whl", hash = "sha256:bc58025940a896d7e5356952228b68f793cf5fcb342be703c3a2669a1488cb72"},
     {file = "black-22.3.0.tar.gz", hash = "sha256:35020b8886c022ced9282b51b5a875b6d1ab0c387b31a065b84db7c33085ca79"},
-]
-"blinker 1.4" = [
-    {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 "certifi 2021.10.8" = [
     {file = "certifi-2021.10.8-py2.py3-none-any.whl", hash = "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"},
@@ -624,10 +605,6 @@ content_hash = "sha256:9ba3d8753a6917d2e9d28880e3f87cf7486bad672b52298316b4e9a98
 "responses 0.20.0" = [
     {file = "responses-0.20.0-py3-none-any.whl", hash = "sha256:18831bc2d72443b67664d98038374a6fa1f27eaaff4dd9a7d7613723416fea3c"},
     {file = "responses-0.20.0.tar.gz", hash = "sha256:644905bc4fb8a18fa37e3882b2ac05e610fe8c2f967d327eed669e314d94a541"},
-]
-"sentry-sdk 1.5.8" = [
-    {file = "sentry_sdk-1.5.8-py2.py3-none-any.whl", hash = "sha256:32af1a57954576709242beb8c373b3dbde346ac6bd616921def29d68846fb8c3"},
-    {file = "sentry-sdk-1.5.8.tar.gz", hash = "sha256:38fd16a92b5ef94203db3ece10e03bdaa291481dd7e00e77a148aa0302267d47"},
 ]
 "sentry-sdk 1.5.11" = [
     {file = "sentry_sdk-1.5.11-py2.py3-none-any.whl", hash = "sha256:c17179183cac614e900cbd048dab03f49a48e2820182ec686c25e7ce46f8548f"},
