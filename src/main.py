@@ -1,16 +1,22 @@
 import logging
 import os
+
+import sentry_sdk
 from flask import jsonify, request, Flask
 
-from .trace import send_trace
-
-from sentry_sdk import init, capture_exception
+from .github_sdk import send_trace
 
 APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
-    # XXX: Is this the right environment?
     # This tracks errors and performance of the app itself rather than GH workflows
-    init(APP_DSN, traces_sample_rate=1.0, environment="development")
+    sentry_sdk.init(
+        APP_DSN,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0,
+        environment="development",
+    )
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
@@ -35,6 +41,8 @@ def handle_event(data, headers):
 def main():
     payload = {"reason": "There was an error."}
     http_code = 500
-    payload, http_code = handle_event(request.json, request.headers)
-
-    return jsonify(payload), http_code
+    # Top-level crash preventing try block
+    try:
+        payload, http_code = handle_event(request.json, request.headers)
+    finally:
+        return jsonify(payload), http_code
