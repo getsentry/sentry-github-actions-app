@@ -43,10 +43,6 @@ dev = [
 # --lf: Rerun only the tests that failed at the last run (or all if none failed)
 addopts = "-ra -q"
 testpaths = [ "tests" ]
-markers = [
-    "webapp: marks tests to require running against app (deselect with '-m \"not app\"')",
-    "serial",
-]
 
 [build-system]
 requires = ["pdm-pep517>=0.12.0"]
