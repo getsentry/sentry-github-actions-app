@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-sdk"
-version = "1.5.11"
+version = "1.5.8"
 summary = "Python client for Sentry (https://sentry.io)"
 dependencies = [
     "certifi",
@@ -334,7 +334,7 @@ summary = "The comprehensive WSGI web application library."
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:19718a515e800ebc1aa80051b97e84a2a2d5dcd85acec377bad44f17c5a016fd"
+content_hash = "sha256:91bd6bcebe3b8a3bf4fcc0fad85506764656352f60448a5ffacd134403071c5d"
 
 [metadata.files]
 "atomicwrites 1.4.0" = [
@@ -606,9 +606,9 @@ content_hash = "sha256:19718a515e800ebc1aa80051b97e84a2a2d5dcd85acec377bad44f17c
     {file = "responses-0.20.0-py3-none-any.whl", hash = "sha256:18831bc2d72443b67664d98038374a6fa1f27eaaff4dd9a7d7613723416fea3c"},
     {file = "responses-0.20.0.tar.gz", hash = "sha256:644905bc4fb8a18fa37e3882b2ac05e610fe8c2f967d327eed669e314d94a541"},
 ]
-"sentry-sdk 1.5.11" = [
-    {file = "sentry_sdk-1.5.11-py2.py3-none-any.whl", hash = "sha256:c17179183cac614e900cbd048dab03f49a48e2820182ec686c25e7ce46f8548f"},
-    {file = "sentry-sdk-1.5.11.tar.gz", hash = "sha256:6c01d9d0b65935fd275adc120194737d1df317dce811e642cbf0394d0d37a007"},
+"sentry-sdk 1.5.8" = [
+    {file = "sentry_sdk-1.5.8-py2.py3-none-any.whl", hash = "sha256:32af1a57954576709242beb8c373b3dbde346ac6bd616921def29d68846fb8c3"},
+    {file = "sentry-sdk-1.5.8.tar.gz", hash = "sha256:38fd16a92b5ef94203db3ece10e03bdaa291481dd7e00e77a148aa0302267d47"},
 ]
 "six 1.16.0" = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
