@@ -41,7 +41,7 @@ dev = [
 # -ra:  Show extra test summary info: (a)ll except passed
 # -q:   Decrease verbosity
 # --lf: Rerun only the tests that failed at the last run (or all if none failed)
-addopts = "-ra -q -v -m 'not webapp'"
+addopts = "-ra -q"
 testpaths = [ "tests" ]
 markers = [
     "webapp: marks tests to require running against app (deselect with '-m \"not app\"')",
