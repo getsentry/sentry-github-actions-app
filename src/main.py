@@ -3,6 +3,7 @@ import os
 
 import sentry_sdk
 from flask import jsonify, request, Flask
+from sentry_sdk import capture_exception
 
 from .handle_event import handle_event
 
@@ -27,11 +28,11 @@ app = Flask(__name__)
 
 @app.route("/", methods=["POST"])
 def main():
-    payload = {"reason": "There was an error."}
-    http_code = 500
     # Top-level crash preventing try block
     try:
         reason, http_code = handle_event(request.json, request.headers)
-        payload = {"reason": reason}
-    finally:
-        return jsonify(payload), http_code
+        return jsonify({"reason": reason}), http_code
+    except Exception as e:
+        logger.exception(e)
+        capture_exception(e)
+        return jsonify({"reason": "There was an error."}), 500
