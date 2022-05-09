@@ -1,5 +1,7 @@
 # Github actions Sentry app
 
+**DISCLAIMER**: This app/sdk are still in experimental mode. Please file an issue and ask of the current state before going ahead and using it.
+
 This app allows your organization to trace Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
 It works by listening to a Github workflow events via a webhook in your repository. These events are the stored in Sentry as performance transactions.
 
@@ -74,4 +76,4 @@ Table of commands:
 
 ## Sentry staff info
 
-Google Cloud Build will automatically build a Docker image when the code merges on `master`. Logging to Google Cloud Run and deploy the latest image.
+Google Cloud Build will automatically build a Docker image when the code merges on `main`. Logging to Google Cloud Run and deploy the latest image.
