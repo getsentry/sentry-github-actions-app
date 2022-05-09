@@ -26,4 +26,4 @@ COPY src/ /app/src/
 # --timeout 0 disables gunicorn's automatic worker restarting.
 # "Workers silent for more than this many seconds are killed and restarted."
 # If things get bad you might want to --max-requests, --max-requests-jitter, --workers 2.
-CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "4", "--timeout", "0", "src.webapp:app"]
+CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "4", "--timeout", "0", "src.main:app"]
