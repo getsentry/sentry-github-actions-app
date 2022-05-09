@@ -2,6 +2,13 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "**.md"
 
 jobs:
   docker-build:
@@ -66,7 +73,6 @@ jobs:
 
       - name: Install hooks
         run: |
-          pip install pre-commit
           pre-commit install
 
       - name: Run hooks
