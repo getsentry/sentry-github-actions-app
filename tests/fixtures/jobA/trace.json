@@ -2,7 +2,8 @@
   "contexts": {
     "trace": {
       "data": {
-        "job_url": "https://github.com/getsentry/sentry/runs/5857527450?check_suite_focus=true"
+        "job": "https://github.com/getsentry/sentry/runs/5857527450?check_suite_focus=true",
+        "pr": "https://github.com/getsentry/sentry/pull/33347"
       },
       "description": "frontend tests (0)",
       "op": "frontend tests (0)",
@@ -54,9 +55,10 @@
   "start_timestamp": "2022-04-06T19:52:17Z",
   "tags": {
     "branch": "ahmed/add-naming-layer",
-    "head_sha": "fd976218a94d8a0cd203c711ea7dbe68c573ef4d",
+    "commit": "fd976218a94d8a0cd203c711ea7dbe68c573ef4d",
     "job_status": "success",
-    "pull_request": "https://github.com/getsentry/sentry/pull/33347",
+    "pull_request": 33347,
+    "repo": "getsentry/sentry",
     "run_attempt": 1,
     "workflow": "acceptance.yml"
   },

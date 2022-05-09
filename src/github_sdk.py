@@ -71,19 +71,29 @@ def send_envelope(trace):
 def get_extra_metadata(job):
     runs = get(job["run_url"]).json()
     workflow = get(runs["workflow_url"]).json()
+    repo = runs["head_repository"]["full_name"]
     meta = {
-        "workflow_name": workflow["name"],
-        # .github/workflows/foo.yml -> foo.yml
-        "workflow_path": workflow["path"].rsplit("/")[-1],
-        "head_branch": runs.get("head_branch"),
-        "head_sha": runs.get("head_sha"),
+        # "workflow_name": workflow["name"],
         "author": runs["head_commit"]["author"],
-        "run_attempt": runs["run_attempt"],
+        # https://getsentry.atlassian.net/browse/TET-22
+        # Tags are not linkified externally, plain text data can be selected in browsers and opened
+        "data": {
+            "job": job["html_url"],
+        },
+        "tags": {
+            "job_status": job["conclusion"],  # e.g. success, failure, skipped
+            "branch": runs["head_branch"],
+            "commit": runs["head_sha"],
+            "repo": repo,
+            "run_attempt": runs["run_attempt"],  # Rerunning a job
+            # It allows querying jobs within the same workflow (e.g. foo.yml)
+            "workflow": workflow["path"].rsplit("/")[-1],
+        },
     }
     if runs.get("pull_requests"):
-        meta[
-            "pull_request"
-        ] = f'https://github.com/{runs["head_repository"]["full_name"]}/pull/{runs["pull_requests"][0]["number"]}'
+        pr_number = runs["pull_requests"][0]["number"]
+        meta["data"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
+        meta["tags"]["pull_request"] = pr_number
 
     return meta
 
@@ -137,26 +147,11 @@ github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 def _generate_trace(job):
     meta = get_extra_metadata(job)
     transaction = _base_transaction(job)
-    # Transactions have name, spans don't.
     transaction["user"] = meta["author"]
-    transaction["tags"] = {
-        "job_status": job["conclusion"],  # e.g. success, failure, skipped
-        "branch": meta["head_branch"],
-        # To create metrics of how often we re-run
-        "run_attempt": meta["run_attempt"],
-        # To filter jobs that run on a specific sha
-        "head_sha": meta["head_sha"],
-        # Workflow name as a tag. It allows querying jobs within the same workflow
-        "workflow": meta["workflow_path"],
-    }
-    if meta.get("pull_request"):
-        transaction["tags"]["pull_request"] = meta["pull_request"]
+    transaction["tags"] = meta["tags"]
+    transaction["contexts"]["trace"]["data"] = meta["data"]
 
-    # https://getsentry.atlassian.net/browse/TET-22
-    # Tags are not linkified externally, plain text data can be selected in browsers and opened
-    transaction["contexts"]["trace"]["data"] = {
-        "job_url": job["html_url"],
-    }
+    # Transactions have name, spans don't.
     transaction["contexts"]["trace"]["op"] = job["name"]
     transaction["contexts"]["trace"]["description"] = job["name"]
     transaction["contexts"]["trace"]["status"] = github_status_trace_status.get(
