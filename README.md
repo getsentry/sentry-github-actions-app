@@ -9,19 +9,6 @@ It works by listening to a Github workflow events via a webhook in your reposito
 
 ## Set up
 
-### Create Github webhook
-
-- Create a [personal token](https://github.com/settings/tokens)
-  - You do not need to give it any scopes
-  - Take note of the token (Regenerate it if you forgot to take note of it)
-  - After creating the token, some orgs [require authorizing tokens](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on), thus, select "Configure SSO" if you see it
-  - If this is for development, you can place the token in a file named `.env` as `GH_TOKEN`
-- Create a Github webhook for the repo you want to analyze from the settings UI of the repo
-  - Choose `application/json`
-  - Choose `workflow` events
-  - Enter the Github token from the previous step
-  - Enter the URL of a deployed app or use an ngrok URL for local development
-
 ### Sentry
 
 In Sentry.io (or self-hosted install):
@@ -29,15 +16,43 @@ In Sentry.io (or self-hosted install):
 - Create a project to track errors of the app itself (`APP_DSN` in section below)
 - Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
 
+### Create a Github personal token
+
+- Create a [personal token](https://github.com/settings/tokens)
+  - You do not need to give it any scopes
+  - Take note of the token as you will need to define it as `GH_TOKEN` in the next section
+  - After creating the token, some orgs [require authorizing tokens](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on), thus, select "Configure SSO" if you see it
+- If this is for development, you can place the token in a file named `.env` as `GH_TOKEN`
+
 ### Deployment set up
 
 - Deploy the app to a service (e.g. GCP) and make it publicly reachable
 - Take note of the app's URL and use it when creating the Github webhook
-- Environment variables
+- Environment variables:
+  - `APP_DSN`: Report errors to Sentry of the app itself
+  - `GH_SECRET`: Report errors to Sentry of the app itself
   - `GH_TOKEN`: This is used to validate API calls are coming from Github webhook
   - `SENTRY_GITHUB_DSN`: Where to report Github job transactions
-  - `APP_DSN`: Report errors to Sentry of the app itself
-  - `LOGGING_LEVEL`: To set the verbosity of Python's logging
+  - `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
+
+**Optional**: Once you have a deployment, you may wish to go back to Sentry and whitelist the deployment.
+
+### Github webhook
+
+Create a Github webhook for a repo (or an org):
+
+- Under settings select "Webhooks":
+- Choose "Add webhook"
+- Choose `application/json`
+- Choose `workflow` events
+- Add a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
+  - Set `GH_SECRET` as an env variable in your deployment
+  - For more info, [read Github docs](https://docs.github.com/en/enterprise-server@3.4/developers/webhooks-and-events/webhooks/creating-webhooks)
+- Enter the URL of the deployed app
+  - Use an ngrok URL for local development (read next section)
+- Save the webhook
+
+**Note**: Webhook events will immediately be sent. Disable the hook if you're not ready.
 
 ## Local development
 
