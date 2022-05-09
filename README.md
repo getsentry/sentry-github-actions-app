@@ -45,7 +45,7 @@ Create a Github webhook for a repo (or an org):
 - Choose "Add webhook"
 - Choose `application/json`
 - Choose `workflow` events
-- Add a secret with `ruby -rsecurerandom -e 'puts SecureRandom.hex(20)'` on your command line
+- Add a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
   - Set `GH_SECRET` as an env variable in your deployment
   - For more info, [read Github docs](https://docs.github.com/en/enterprise-server@3.4/developers/webhooks-and-events/webhooks/creating-webhooks)
 - Enter the URL of the deployed app
