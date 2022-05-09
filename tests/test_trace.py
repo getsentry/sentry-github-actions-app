@@ -3,13 +3,18 @@ from unittest.mock import patch
 import responses
 from freezegun import freeze_time
 
-from src.github_sdk import send_trace, _generate_trace
+from src.github_sdk import GithubSentryError, send_envelope, send_trace, _generate_trace
 from .fixtures import *
 
 
 @responses.activate
 def test_job_without_steps(skipped_workflow):
     assert send_trace(skipped_workflow) == None
+
+
+def test_send_trace_without_setting_dsn(jobA_trace):
+    with pytest.raises(GithubSentryError):
+        assert send_envelope(jobA_trace)
 
 
 @freeze_time()
