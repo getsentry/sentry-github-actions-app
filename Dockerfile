@@ -8,7 +8,7 @@ COPY pyproject.toml pdm.lock README.md /project/
 COPY src/ /project/src
 # Install dependencies and project
 WORKDIR /project
-RUN pdm install --prod --no-lock --no-editable
+RUN pdm install -v --prod --no-lock --no-editable
 
 # Execution stage
 FROM python:3.8

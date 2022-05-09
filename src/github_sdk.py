@@ -19,6 +19,10 @@ GH_TOKEN = os.environ.get("GH_TOKEN")
 SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
 
 
+class GithubSentryError(Exception):
+    pass
+
+
 def get(url):
     headers = {}
     if GH_TOKEN and url.find("github.com") >= 0:
@@ -33,9 +37,11 @@ def get_uuid():
     return uuid.uuid4().hex
 
 
-def send_envelope(envelope):
+def send_envelope(trace):
     if not SENTRY_GITHUB_DSN:
-        return None
+        raise GithubSentryError("Set SENTRY_GITHUB_SDN in order to send envelopes.")
+    envelope = Envelope()
+    envelope.add_transaction(trace)
     base_uri, project_id = SENTRY_GITHUB_DSN.rsplit("/", 1)
     sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
     headers = {
@@ -58,9 +64,7 @@ def send_envelope(envelope):
         envelope.serialize_into(f)
 
     req = requests.post(url, data=body.getvalue(), headers=headers)
-    if not req.ok:
-        raise Exception(req.text)
-    return req
+    req.raise_for_status()
 
 
 # XXX: This is a slow call
@@ -175,6 +179,4 @@ def send_trace(workflow):
         return
     trace = _generate_trace(workflow)
     if trace:
-        envelope = Envelope()
-        envelope.add_transaction(trace)
-        send_envelope(envelope)
+        send_envelope(trace)

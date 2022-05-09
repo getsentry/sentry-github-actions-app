@@ -3,6 +3,10 @@
 This app allows your organization to trace Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
 It works by listening to a Github workflow events via a webhook in your repository. These events are the stored in Sentry as performance transactions.
 
+`github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
+`handle_event.py`: Business logic goes here.
+`main.py` contains the code to respond to webhook events.
+
 ## Set up
 
 ### Create Github webhook
@@ -25,7 +29,7 @@ In Sentry.io (or self-hosted install):
 - Create a project to track errors of the app itself (`APP_DSN` in section below)
 - Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
 
-### App deployment
+### Deployment set up
 
 - Deploy the app to a service (e.g. GCP) and make it publicly reachable
 - Take note of the app's URL and use it when creating the Github webhook
@@ -67,3 +71,7 @@ Table of commands:
 | pdm run bootstrap | Install pre-commit hooks                           |
 | pdm run test      | Run Python tests                                   |
 | pdm run coverage  | Get code coverage data and open results in browser |
+
+## Sentry staff info
+
+Google Cloud Build will automatically build a Docker image when the code merges on `master`. Logging to Google Cloud Run and deploy the latest image.

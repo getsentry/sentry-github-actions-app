@@ -19,8 +19,8 @@ Homepage = "https://github.com/armenzg/github-actions-app"
 [project.optional-dependencies]
 [tool.pdm.scripts]
 start = "flask run -p 5001"
-test = "pytest"
-coverage = "pytest --cov=src --cov-report=html && open htmlcov/index.html"
+test = "pytest --cov=src --cov-report=html"
+test-ci = "pytest --cov=src --cov-report=xml"
 ingest = "python src/cli.py"
 # You will need to install this binary in your host
 # https://watchexec.github.io/index.html
