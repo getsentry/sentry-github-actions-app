@@ -71,7 +71,7 @@ def send_envelope(trace):
 def get_extra_metadata(job):
     runs = get(job["run_url"]).json()
     workflow = get(runs["workflow_url"]).json()
-    repo = runs["head_repository"]["full_name"]
+    repo = runs["repository"]["full_name"]
     meta = {
         # "workflow_name": workflow["name"],
         "author": runs["head_commit"]["author"],
