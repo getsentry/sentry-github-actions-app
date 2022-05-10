@@ -6,36 +6,10 @@ authors = [
     {name = "Armen Zambrano G.", email = "armenzg@sentry.io"},
 ]
 license-expression = "MIT"
-dependencies = [
-    "flask>=2.0.3",
-    "sentry-sdk>=1.5.8",
-    "requests>=2.27.1",
-]
 requires-python = ">=3.8"
 
 [project.urls]
 Homepage = "https://github.com/armenzg/github-actions-app"
-
-[project.optional-dependencies]
-[tool.pdm.scripts]
-start = "flask run -p 5001"
-test = "pytest --cov=src --cov-report=html"
-test-ci = "pytest --cov=src --cov-report=xml"
-ingest = "python src/cli.py"
-# You will need to install this binary in your host
-# https://watchexec.github.io/index.html
-watch= "watchexec -f src,tests -e py pytest"
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "pytest>=7.1.1",
-    "python-dotenv>=0.20.0",
-    "black>=22.3.0",
-    "pre-commit>=2.18.1",
-    "pytest-cov>=3.0.0",
-    "responses>=0.20.0",
-    "freezegun>=1.2.1",
-]
 
 [tool.pytest.ini_options]
 # -ra:  Show extra test summary info: (a)ll except passed
