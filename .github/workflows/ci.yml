@@ -43,12 +43,11 @@ jobs:
       - name: Set up
         run: |
           pip install wheel
-          pip install pdm
-          pdm sync
+          pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
         run: |
-          pdm run test-ci
+          pytest --cov=src --cov-report=xml
 
       - uses: codecov/codecov-action@v2
         with:

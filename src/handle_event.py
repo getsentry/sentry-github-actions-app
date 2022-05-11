@@ -1,4 +1,3 @@
-import os
 from .github_sdk import send_trace
 
 

@@ -60,16 +60,24 @@ Create a Github webhook for a repo (or an org):
 
 Prerequisites:
 
-- [PDM](https://pdm.fming.dev/#installation) ([Helper script](https://gist.github.com/armenzg/4d2ac94bd770879d8df37c5da0fc7a33)) to manage Python requirements
 - ngrok (for local dev)
+
+Set up:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install wheel
+pip install -r requirements.txt -r requirements-dev.txt
+```
 
 You can ingest a single job without webhooks or starting the app by using the cli. For example:
 
 ```shell
 # This is a normal URL of a job on Github
-pdm run ingest https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
+python3 src/cli.py https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
 # From test fixture
-pdm run ingest tests/fixtures/jobA/job.json
+python3 src/cli.py tests/fixtures/jobA/job.json
 ```
 
 Steps to ingest events from a repository:
@@ -77,17 +85,17 @@ Steps to ingest events from a repository:
 - Install ngrok, authenticate and start it up (`ngrok http 5001`)
   - Take note of the URL
 - Create a Github webhook for the repo you want to analyze
-  - Choose `workflow` events & make sure to choose `application/json`
+  - Choose `Workflow jobs` events & make sure to choose `application/json`
   - Put Ngrok's URL there
 
 Table of commands:
 
-| Command           | Description                                        |
-| ----------------- | -------------------------------------------------- |
-| pdm run start     | Start the Flask app on <http://localhost:5001>     |
-| pdm run bootstrap | Install pre-commit hooks                           |
-| pdm run test      | Run Python tests                                   |
-| pdm run coverage  | Get code coverage data and open results in browser |
+| Command                            | Description                                    |
+| ---------------------------------- | ---------------------------------------------- |
+| flask run -p 5001                  | Start the Flask app on <http://localhost:5001> |
+| pre-commit install                 | Install pre-commit hooks                       |
+| pytest                             | Run Python tests                               |
+| pytest --cov=src --cov-report=html | Generate code coverage.                        |
 
 ## Sentry staff info
 
