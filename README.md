@@ -90,11 +90,12 @@ Steps to ingest events from a repository:
 
 Table of commands:
 
-| Command            | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| flask run -p 5001  | Start the Flask app on <http://localhost:5001> |
-| pre-commit install | Install pre-commit hooks                       |
-| pytest             | Run Python tests                               |
+| Command                            | Description                                    |
+| ---------------------------------- | ---------------------------------------------- |
+| flask run -p 5001                  | Start the Flask app on <http://localhost:5001> |
+| pre-commit install                 | Install pre-commit hooks                       |
+| pytest                             | Run Python tests                               |
+| pytest --cov=src --cov-report=html | Generate code coverage.                        |
 
 ## Sentry staff info
 

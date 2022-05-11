@@ -1,21 +1,17 @@
 # Build stage
 FROM python:3.8.10 AS builder
-# Install PDM
 RUN pip install -U pip setuptools wheel
-RUN pip install pdm
 # Copy files
-COPY pyproject.toml pdm.lock README.md /project/
-COPY src/ /project/src
-# Install dependencies and project
+COPY requirements.txt /project/
 WORKDIR /project
-RUN pdm install -v --prod --no-lock --no-editable
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Execution stage
 FROM python:3.8
 WORKDIR /app
+COPY src/ /project/src
 # Retrieve packages from build stage
-ENV PYTHONPATH=/project/pkgs
-COPY --from=builder /project/__pypackages__/3.8/lib /project/pkgs
+COPY --from=builder /usr/local/lib/python3.8/site-packages/ /usr/local/lib/python3.8/site-packages/
 RUN pip install gunicorn==20.1.0
 # Source code
 COPY src/ /app/src/
