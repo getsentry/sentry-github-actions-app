@@ -34,17 +34,6 @@ class GithubClient:
             # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
-    def send_trace(self, job):
-        # This can happen when the workflow is skipped and there are no steps
-        if job["conclusion"] == "skipped":
-            logging.info(
-                f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}"
-            )
-            return
-        trace = self._generate_trace(job)
-        if trace:
-            return self._send_envelope(trace)
-
     def _fetch_github(self, url):
         headers = {}
         if self.token:
@@ -130,6 +119,17 @@ class GithubClient:
         )
         req.raise_for_status()
         return req
+
+    def send_trace(self, job):
+        # This can happen when the workflow is skipped and there are no steps
+        if job["conclusion"] == "skipped":
+            logging.info(
+                f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}"
+            )
+            return
+        trace = self._generate_trace(job)
+        if trace:
+            return self._send_envelope(trace)
 
 
 def _base_transaction(job):
