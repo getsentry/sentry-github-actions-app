@@ -1,11 +1,12 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import requests
 import responses
 from freezegun import freeze_time
 from sentry_sdk.utils import format_timestamp
 
-from src.github_sdk import GithubSentryError, GithubClient
+from src.github_sdk import GithubClient
 from .fixtures import *
 
 dsn_url = "https://foo@random.ingest.sentry.io/bar"
@@ -73,7 +74,7 @@ def test_send_trace(
     now = datetime.utcnow()
 
     envelope_headers = {
-        "User-Agent": "python-requests/2.25.1",
+        "User-Agent": f"python-requests/{requests.__version__}",
         "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
