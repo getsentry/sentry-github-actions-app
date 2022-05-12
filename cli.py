@@ -1,6 +1,6 @@
 import sys
 
-from github_sdk import get, send_trace
+from src.github_sdk import GithubClient
 
 # Point this script to the URL of a job and we will trace it
 # You give us this https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
@@ -8,17 +8,18 @@ from github_sdk import get, send_trace
 # e.g. tests/fixtures/jobA/job.json
 if __name__ == "__main__":
     argument = sys.argv[1]
+    client = GithubClient()
     if argument.startswith("https"):
         _, _, _, org, repo, _, run_id = argument.split("?")[0].split("/")
         url = f"https://api.github.com/repos/{org}/{repo}/actions/jobs/{run_id}"
-        req = get(url)
+        req = client._fetch_github(url)
         if not req.ok:
             raise Exception(req.text)
-        send_trace(req.json())
+        client.send_trace(req.json())
     else:
         import json
 
         data = {}
         with open(argument) as f:
             data = json.load(f)
-        send_trace(data)
+        client.send_trace(data)

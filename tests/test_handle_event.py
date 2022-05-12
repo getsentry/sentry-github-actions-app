@@ -1,5 +1,10 @@
+import os
+
 import pytest
 from src.handle_event import handle_event
+
+# XXX: Fix this
+os.environ["SENTRY_GITHUB_DSN"] = "https://foo@random.ingest.sentry.io/bar"
 
 
 def test_invalid_header():
