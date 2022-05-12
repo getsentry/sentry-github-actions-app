@@ -3,19 +3,21 @@ from unittest.mock import patch
 
 import responses
 from freezegun import freeze_time
+from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubSentryError, GithubClient
 from .fixtures import *
 
+dsn_url = "https://foo@random.ingest.sentry.io/bar"
 
-@responses.activate
+
 def test_job_without_steps(skipped_workflow):
-    sdk = GithubClient(dry_run=True)
+    sdk = GithubClient(dsn_url)
     assert sdk.send_trace(skipped_workflow) == None
 
 
 def test_initialize_without_setting_dsn():
-    with pytest.raises(GithubSentryError):
+    with pytest.raises(TypeError):
         GithubClient()
 
 
@@ -39,7 +41,7 @@ def test_trace_generation(
         "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
         json=jobA_workflow,
     )
-    client = GithubClient(dry_run=True)
+    client = GithubClient(dsn=dsn_url)
     assert client._generate_trace(jobA_job) == jobA_trace
 
 
@@ -51,7 +53,6 @@ def test_send_trace(
     jobA_job,
     jobA_runs,
     jobA_workflow,
-    jobA_trace,
     uuid_list,
 ):
     mock_get_uuid.side_effect = uuid_list
@@ -63,19 +64,16 @@ def test_send_trace(
         "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
         json=jobA_workflow,
     )
-    dsn_url = "https://foo@random.ingest.sentry.io"
-    responses.post(
-        f"{dsn_url}/api/bar/envelope/",
-        json={"type": "post"},
-    )
 
-    client = GithubClient(dsn=f"{dsn_url}/bar")
+    responses.post("https://foo@random.ingest.sentry.io/api/bar/envelope/")
+
+    client = GithubClient(dsn_url)
     resp = client.send_trace(jobA_job)
     # This cannot happen in a fixture, otherwise, there will be a tiny bit of a clock drift
     now = datetime.utcnow()
 
     envelope_headers = {
-        "User-Agent": "python-requests/2.27.1",
+        "User-Agent": "python-requests/2.25.1",
         "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",

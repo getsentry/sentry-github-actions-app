@@ -21,13 +21,8 @@ class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
-    def __init__(self, dsn=None, github_token=None, dry_run=False) -> None:
+    def __init__(self, dsn, github_token=None) -> None:
         self.token = github_token
-
-        # XXX: Make dsn mandatory in the future
-        if not dsn and not dry_run:
-            raise GithubSentryError("Set SENTRY_GITHUB_SDN in order to send envelopes.")
-
         if dsn:
             base_uri, project_id = dsn.rsplit("/", 1)
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
