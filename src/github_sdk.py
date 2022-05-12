@@ -13,6 +13,10 @@ class GithubSentryError(Exception):
     pass
 
 
+def get_uuid():
+    return uuid.uuid4().hex
+
+
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
@@ -20,6 +24,7 @@ class GithubClient:
     def __init__(self, dsn=None, github_token=None, dry_run=False) -> None:
         self.token = github_token
 
+        # XXX: Make dsn mandatory in the future
         if not dsn and not dry_run:
             raise GithubSentryError("Set SENTRY_GITHUB_SDN in order to send envelopes.")
 
@@ -125,10 +130,6 @@ class GithubClient:
         )
         req.raise_for_status()
         return req
-
-
-def get_uuid():
-    return uuid.uuid4().hex
 
 
 def _base_transaction(job):
