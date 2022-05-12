@@ -21,8 +21,8 @@ class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
-    def __init__(self, dsn, github_token=None) -> None:
-        self.token = github_token
+    def __init__(self, dsn, token) -> None:
+        self.token = token
         if dsn:
             base_uri, project_id = dsn.rsplit("/", 1)
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
