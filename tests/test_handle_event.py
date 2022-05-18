@@ -5,6 +5,7 @@ from src.handle_event import handle_event
 
 # XXX: Fix this
 os.environ["SENTRY_GITHUB_DSN"] = "https://foo@random.ingest.sentry.io/bar"
+os.environ["GH_TOKEN"] = "irrelevant"
 
 
 def test_invalid_header():

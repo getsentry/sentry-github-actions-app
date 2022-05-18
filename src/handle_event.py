@@ -22,6 +22,7 @@ def handle_event(data, headers):
     else:
         client = GithubClient(
             dsn=SENTRY_GITHUB_DSN,
+            token=GH_TOKEN,
         )
         client.send_trace(data["workflow_job"])
 

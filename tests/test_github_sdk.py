@@ -9,17 +9,23 @@ from sentry_sdk.utils import format_timestamp
 from src.github_sdk import GithubClient
 from .fixtures import *
 
-dsn_url = "https://foo@random.ingest.sentry.io/bar"
+DSN = "https://foo@random.ingest.sentry.io/bar"
+TOKEN = "irrelevant"
 
 
 def test_job_without_steps(skipped_workflow):
-    sdk = GithubClient(dsn_url)
+    sdk = GithubClient(dsn=DSN, token=TOKEN)
     assert sdk.send_trace(skipped_workflow) == None
 
 
 def test_initialize_without_setting_dsn():
     with pytest.raises(TypeError):
         GithubClient()
+
+
+def test_initialize_without_setting_token():
+    with pytest.raises(TypeError):
+        GithubClient(dsn=DSN)
 
 
 @freeze_time()
@@ -42,7 +48,7 @@ def test_trace_generation(
         "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
         json=jobA_workflow,
     )
-    client = GithubClient(dsn=dsn_url)
+    client = GithubClient(dsn=DSN, token=TOKEN)
     assert client._generate_trace(jobA_job) == jobA_trace
 
 
@@ -68,7 +74,7 @@ def test_send_trace(
 
     responses.post("https://foo@random.ingest.sentry.io/api/bar/envelope/")
 
-    client = GithubClient(dsn_url)
+    client = GithubClient(dsn=DSN, token=TOKEN)
     resp = client.send_trace(jobA_job)
     # This cannot happen in a fixture, otherwise, there will be a tiny bit of a clock drift
     now = datetime.utcnow()
