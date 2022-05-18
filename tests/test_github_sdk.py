@@ -4,6 +4,7 @@ from unittest.mock import patch
 import requests
 import responses
 from freezegun import freeze_time
+from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
@@ -26,6 +27,16 @@ def test_initialize_without_setting_dsn():
 def test_initialize_without_setting_token():
     with pytest.raises(TypeError):
         GithubClient(dsn=DSN)
+
+
+@responses.activate
+def test_ensure_raise_error_on_github_api_failure():
+    """We want to delegate to the app using the SDK to handle the error."""
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    responses.get(url, json="{reason: Internal Server Error}", status=500)
+    with pytest.raises(HTTPError) as e:
+        client = GithubClient(dsn=DSN, token=TOKEN)
+        client._fetch_github(url)
 
 
 @freeze_time()
