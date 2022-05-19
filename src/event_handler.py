@@ -15,15 +15,15 @@ class EventHandler:
         http_code = 200
         reason = "OK"
 
-        if self.secret and not valid_payload(
+        if headers["X-GitHub-Event"] != "workflow_job":
+            reason = "Event not supported."
+        elif data["action"] != "completed":
+            reason = "We cannot do anything with this workflow state."
+        elif self.secret and not valid_payload(
             self.secret, data, headers["X-Hub-Signature"].replace("sha1=", "")
         ):
             http_code = 400
             reason = "The secret you are using on your Github webhook does not match this app's secret."
-        elif headers["X-GitHub-Event"] != "workflow_job":
-            reason = "Event not supported."
-        elif data["action"] != "completed":
-            reason = "We cannot do anything with this workflow state."
         else:
             self.client.send_trace(data["workflow_job"])
 
