@@ -20,13 +20,19 @@ def test_job_without_steps(skipped_workflow):
 
 
 def test_initialize_without_setting_dsn():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as excinfo:
         GithubClient()
+    (msg,) = excinfo.value.args
+    assert (
+        msg == "__init__() missing 2 required positional arguments: 'token' and 'dsn'"
+    )
 
 
 def test_initialize_without_setting_token():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as excinfo:
         GithubClient(dsn=DSN)
+    (msg,) = excinfo.value.args
+    assert msg == "__init__() missing 1 required positional argument: 'token'"
 
 
 @responses.activate
@@ -34,9 +40,14 @@ def test_ensure_raise_error_on_github_api_failure():
     """We want to delegate to the app using the SDK to handle the error."""
     url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     responses.get(url, json="{reason: Internal Server Error}", status=500)
-    with pytest.raises(HTTPError) as e:
+    with pytest.raises(HTTPError) as excinfo:
         client = GithubClient(dsn=DSN, token=TOKEN)
         client._fetch_github(url)
+    (msg,) = excinfo.value.args
+    assert (
+        msg
+        == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    )
 
 
 @freeze_time()

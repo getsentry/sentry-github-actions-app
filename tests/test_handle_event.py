@@ -76,7 +76,7 @@ def test_valid_signature(webhook_event):
         valid_payload(
             "fake_secret",
             webhook_event["payload"],
-            "aaaeb75e9ef80af1a95ffdf4b4b8b2a69ff8ff69",
+            "b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
         )
         == True
     )
@@ -88,7 +88,7 @@ def test_invalid_signature(webhook_event):
         valid_payload(
             "mistyped_secret",
             webhook_event["payload"],
-            "aaaeb75e9ef80af1a95ffdf4b4b8b2a69ff8ff69",
+            "b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
         )
         == False
     )
@@ -102,7 +102,7 @@ def test_handle_event_with_secret_and_missing_header(webhook_event):
             headers={"X-GitHub-Event": "workflow_job"},
         )
     (msg,) = excinfo.value.args
-    assert msg == "X-Hub-Signature"
+    assert msg == "X-Hub-Signature-256"
 
 
 def test_handle_event_with_mistyped_secret(webhook_event):
@@ -111,7 +111,7 @@ def test_handle_event_with_mistyped_secret(webhook_event):
         data=webhook_event["payload"],
         headers={
             "X-GitHub-Event": "workflow_job",
-            "X-Hub-Signature": "sha1=aaaeb75e9ef80af1a95ffdf4b4b8b2a69ff8ff69",
+            "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
         },
     )
     assert (

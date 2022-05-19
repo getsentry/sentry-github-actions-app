@@ -11,7 +11,7 @@
     "X-GitHub-Hook-Installation-Target-ID": 873328,
     "X-GitHub-Hook-Installation-Target-Type": "repository",
     "X-Hub-Signature": "sha1=aaaeb75e9ef80af1a95ffdf4b4b8b2a69ff8ff69",
-    "X-Hub-Signature-256": "sha256=6866bcbc86e2ef0405992bbf381431071f2c658eea0c5fadbeea9ec3b2e2dd06"
+    "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8"
   },
   "payload": {
     "action": "completed",
