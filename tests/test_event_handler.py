@@ -7,8 +7,9 @@ from .fixtures import *
 def test_invalid_header():
     handler = EventHandler()
     # This is missing X-GitHub-Event in the headers
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as e:
         handler.handle_event(data={}, headers={})
+    assert e.value.args == ("X-GitHub-Event",)
 
 
 # XXX: These tests could be covered with a JSON schema
@@ -25,11 +26,12 @@ def test_invalid_github_event():
 def test_missing_action_key():
     handler = EventHandler()
     # This payload is missing the action key
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as e:
         handler.handle_event(
             data={"bad_key": "irrelevant"},
             headers={"X-GitHub-Event": "workflow_job"},
         )
+    assert e.value.args == ("action",)
 
 
 def test_not_completed_workflow():
@@ -46,22 +48,24 @@ def test_not_completed_workflow():
 def test_missing_workflow_job():
     handler = EventHandler()
     # This tries to send a trace but we're missing the workflow_job key
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as e:
         handler.handle_event(
             data={"action": "completed"},
             headers={"X-GitHub-Event": "workflow_job"},
         )
+    assert e.value.args == ("workflow_job",)
 
 
 # "Set SENTRY_GITHUB_SDN in order to send envelopes."
 def test_no_dsn_is_set():
     handler = EventHandler()
     # This tries to process a job that does not have the conclusion key
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as e:
         handler.handle_event(
             data={"action": "completed", "workflow_job": {}},
             headers={"X-GitHub-Event": "workflow_job"},
         )
+    assert e.value.args == ("conclusion",)
 
 
 def test_valid_signature(webhook_event):
