@@ -1,7 +1,6 @@
 import pytest
 
 from src.event_handler import EventHandler, valid_payload
-from .fixtures import *
 
 
 def test_invalid_header():
