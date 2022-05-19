@@ -1,6 +1,7 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
 import requests
 import responses
 from freezegun import freeze_time
@@ -8,7 +9,6 @@ from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
-from .fixtures import *
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
