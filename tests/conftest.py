@@ -45,3 +45,9 @@ def uuid_list():
         "498cceede5f14fd991778f007b237803",
         "a401d83c7ec0495f82a8da8d9a389f5b",
     ]
+
+
+@pytest.fixture
+def webhook_event():
+    with open("tests/fixtures/webhook_event.json") as f:
+        return json.load(f)

@@ -21,8 +21,9 @@ class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
-    def __init__(self, token, dsn) -> None:
+    def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
+        self.dry_run = dry_run
         if dsn:
             base_uri, project_id = dsn.rsplit("/", 1)
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
@@ -91,6 +92,8 @@ class GithubClient:
         return transaction
 
     def _send_envelope(self, trace):
+        if self.dry_run:
+            return
         envelope = Envelope()
         envelope.add_transaction(trace)
         now = datetime.utcnow()
