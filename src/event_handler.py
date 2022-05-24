@@ -17,23 +17,17 @@ class EventHandler:
             reason = "Event not supported."
         elif data["action"] != "completed":
             reason = "We cannot do anything with this workflow state."
-        elif self.secret and not valid_payload(
-            self.secret, data, headers["X-Hub-Signature-256"].replace("sha256=", "")
-        ):
-            http_code = 400
-            reason = "The secret you are using on your Github webhook does not match this app's secret."
         else:
             self.client.send_trace(data["workflow_job"])
 
         return reason, http_code
 
-
-def payload_signature(secret, payload):
-    return hmac.new(
-        secret.encode(), msg=str(payload).encode(), digestmod="sha256"
-    ).hexdigest()
-
-
-def valid_payload(secret, payload, signature):
-    # Validate payload signature
-    return hmac.compare_digest(payload_signature(secret, payload), signature)
+    def valid_signature(self, body, headers):
+        if not self.secret:
+            return True
+        else:
+            signature = headers["X-Hub-Signature-256"].replace("sha256=", "")
+            body_signature = hmac.new(
+                self.secret.encode(), msg=str(body).encode(), digestmod="sha256"
+            ).hexdigest()
+            return hmac.compare_digest(body_signature, signature)

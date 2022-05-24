@@ -1,6 +1,6 @@
 import pytest
 
-from src.event_handler import EventHandler, valid_payload
+from src.event_handler import EventHandler
 
 
 def test_invalid_header():
@@ -72,53 +72,30 @@ def test_no_dsn_is_set():
 
 
 def test_valid_signature(webhook_event):
+    handler = EventHandler(secret="fake_secret")
     assert (
-        valid_payload(
-            "fake_secret",
-            webhook_event["payload"],
-            "b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+        handler.valid_signature(
+            body=webhook_event["payload"],
+            headers={
+                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+            },
         )
         == True
     )
 
 
 def test_invalid_signature(webhook_event):
+    handler = EventHandler(secret="mistyped_secret")
     # This is unit testing that the function works as expected
     assert (
-        valid_payload(
-            "mistyped_secret",
-            webhook_event["payload"],
-            "b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+        handler.valid_signature(
+            body=webhook_event["payload"],
+            headers={
+                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+            },
         )
         == False
     )
-
-
-def test_handle_event_with_secret_and_missing_header(webhook_event):
-    handler = EventHandler(secret="fake_secret")
-    with pytest.raises(KeyError) as excinfo:
-        handler.handle_event(
-            data=webhook_event["payload"],
-            headers={"X-GitHub-Event": "workflow_job"},
-        )
-    (msg,) = excinfo.value.args
-    assert msg == "X-Hub-Signature-256"
-
-
-def test_handle_event_with_mistyped_secret(webhook_event):
-    handler = EventHandler(secret="mistyped_secret")
-    reason, http_code = handler.handle_event(
-        data=webhook_event["payload"],
-        headers={
-            "X-GitHub-Event": "workflow_job",
-            "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
-        },
-    )
-    assert (
-        reason
-        == "The secret you are using on your Github webhook does not match this app's secret."
-    )
-    assert http_code == 400
 
 
 def test_handle_event_with_secret(webhook_event):

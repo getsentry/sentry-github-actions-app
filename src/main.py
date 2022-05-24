@@ -2,7 +2,7 @@ import logging
 import os
 
 import sentry_sdk
-from flask import jsonify, request, Flask
+from flask import abort, jsonify, request, Flask
 from sentry_sdk import capture_exception
 
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -39,6 +39,12 @@ handler = EventHandler(token=GH_TOKEN, dsn=SENTRY_GITHUB_DSN)
 
 @app.route("/", methods=["POST"])
 def main():
+    if not handler.valid_signature(request.data, request.headers):
+        abort(
+            400,
+            "The secret you are using on your Github webhook does not match this app's secret.",
+        )
+
     # Top-level crash preventing try block
     try:
         reason, http_code = handler.handle_event(request.json, request.headers)
