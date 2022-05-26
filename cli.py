@@ -5,7 +5,7 @@ import sys
 import requests
 
 from src.github_sdk import GithubClient
-from src.github_app import get_access_tokens, get_org_for_token
+from src.github_app import get_access_tokens
 
 
 # Point this script to the URL of a job and we will trace it
@@ -14,9 +14,7 @@ from src.github_app import get_access_tokens, get_org_for_token
 # e.g. tests/fixtures/jobA/job.json
 if __name__ == "__main__":
     argument = sys.argv[1]
-    # XXX: Currently testing the GH app approach
-    if os.environ.get("GH_APP_ID"):
-        access_tokens = get_access_tokens()
+    token = None
 
     if argument.startswith("https"):
         _, _, _, org, repo, _, run_id = argument.split("?")[0].split("/")
@@ -31,6 +29,7 @@ if __name__ == "__main__":
         org = job["url"].split("/")[4]
 
     if os.environ.get("GH_APP_ID"):
+        access_tokens = get_access_tokens()
         assert org in access_tokens, (
             f'You are trying to reach "{org}", however, '
             + f'we only have access to these orgs: "{access_tokens.keys()}".'

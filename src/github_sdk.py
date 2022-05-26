@@ -93,7 +93,6 @@ class GithubClient:
         return transaction
 
     def _send_envelope(self, trace):
-        print("hey")
         if self.dry_run:
             return
         envelope = Envelope()
@@ -117,8 +116,6 @@ class GithubClient:
         req = requests.post(
             self.sentry_project_url, data=body.getvalue(), headers=headers
         )
-        print(self.sentry_project_url)
-        print(headers)
         req.raise_for_status()
         return req
 
