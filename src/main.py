@@ -7,7 +7,7 @@ from sentry_sdk import capture_exception
 
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from .github_app import get_jwt_token, get_private_key
+from .github_app import get_access_tokens
 from .event_handler import EventHandler
 
 APP_DSN = os.environ.get("APP_DSN")
@@ -28,16 +28,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
 
-ALLOWED_ORGS = "armenzg-dev"
-
-# Running as a Github App
+# The app can run in one mode or the other
 if os.environ.get("GH_APP_ID"):
-    # XXX: only for dev mode
-    file_path = os.environ["GH_PRIVATE_KEY_PATH"]
-    TOKEN = get_jwt_token(get_private_key(file_path))
-elif os.environ.get("GH_TOKEN"):
-    # We need an authorized token to fetch the API. If you have SSO on your org you will need to grant permission
-    # Your app and the Github webhook will share this secret
+    access_tokens = get_access_tokens()
+    # XXX: We will change this in following PRs
+    TOKEN = access_tokens["armenzg-dev"]
+elif os.environ["GH_TOKEN"]:
+    # We need an authorized token to fetch the API. If you have SSO on your org
+    # you will need to grant permission.
     # You can create an .env file and place the token in it
     TOKEN = os.environ["GH_TOKEN"]
 
@@ -45,7 +43,11 @@ elif os.environ.get("GH_TOKEN"):
 SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
 
 app = Flask(__name__)
-handler = EventHandler(token=TOKEN, dsn=SENTRY_GITHUB_DSN)
+handler = EventHandler(
+    secret=os.environ.get("GH_WEBHOOK_SECRET"),
+    token=TOKEN,
+    dsn=SENTRY_GITHUB_DSN,
+)
 
 
 @app.route("/", methods=["POST"])
