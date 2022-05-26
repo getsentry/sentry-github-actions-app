@@ -1,3 +1,4 @@
-flask>=2.0.3
-sentry-sdk[flask]>=1.5.8
-requests>=2.27.1
+PyJWT[crypto]==2.4.0
+flask==2.0.3
+sentry-sdk[flask]==1.5.8
+requests==2.27.1

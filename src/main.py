@@ -7,6 +7,7 @@ from sentry_sdk import capture_exception
 
 from sentry_sdk.integrations.flask import FlaskIntegration
 
+from .github_app import foo
 from .event_handler import EventHandler
 
 APP_DSN = os.environ.get("APP_DSN")
@@ -39,6 +40,7 @@ handler = EventHandler(token=GH_TOKEN, dsn=SENTRY_GITHUB_DSN)
 
 @app.route("/", methods=["POST"])
 def main():
+    foo()
     if not handler.valid_signature(request.data, request.headers):
         abort(
             400,
