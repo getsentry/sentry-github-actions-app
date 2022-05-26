@@ -13,7 +13,7 @@ You can set up this app following the instructions under "Self-hosted". We also 
 
 ## Github app
 
-Work in progress. Currently, only for internal use (we may be able to make it available to the public in the future).
+Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry dsn.
 
 ## Self-hosted
 

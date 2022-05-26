@@ -5,7 +5,7 @@ import sys
 import requests
 
 from src.github_sdk import GithubClient
-from src.github_app import get_jwt_token, get_private_key, get_org_for_token
+from src.github_app import get_access_tokens, get_org_for_token
 
 
 # Point this script to the URL of a job and we will trace it
@@ -14,9 +14,9 @@ from src.github_app import get_jwt_token, get_private_key, get_org_for_token
 # e.g. tests/fixtures/jobA/job.json
 if __name__ == "__main__":
     argument = sys.argv[1]
-    # Currently testing the GH app approach
-    token = get_jwt_token(get_private_key(file_path=os.environ["GH_PRIVATE_KEY_PATH"]))
-    valid_org = get_org_for_token(token)
+    # XXX: Currently testing the GH app approach
+    if os.environ.get("GH_APP_ID"):
+        access_tokens = get_access_tokens()
 
     if argument.startswith("https"):
         _, _, _, org, repo, _, run_id = argument.split("?")[0].split("/")
@@ -30,13 +30,17 @@ if __name__ == "__main__":
             job = json.load(f)
         org = job["url"].split("/")[4]
 
-    assert (
-        org == valid_org
-    ), f'The token provided is useful for "{valid_org}" but you are trying to ingest a job for "{org}".'
+    if os.environ.get("GH_APP_ID"):
+        assert org in access_tokens, (
+            f'You are trying to reach "{org}", however, '
+            + f'we only have access to these orgs: "{access_tokens.keys()}".'
+        )
+        token = access_tokens[org]["token"]
+    else:
+        token = os.environ["GH_TOKEN"]
 
     client = GithubClient(
         token=token,
         dsn=os.environ.get("SENTRY_TEST_DSN"),
-        github_app=True,
     )
     client.send_trace(job)
