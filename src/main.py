@@ -7,7 +7,7 @@ from sentry_sdk import capture_exception
 
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from .github_app import generate_jwt_token, get_jwt_token, get_private_key
+from .github_app import get_jwt_token, get_private_key
 from .event_handler import EventHandler
 
 APP_DSN = os.environ.get("APP_DSN")
