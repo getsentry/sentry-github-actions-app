@@ -41,9 +41,7 @@ class GithubClient:
             }
         else:
             headers["Authorization"] = f"token {self.token}"
-        import pdb
 
-        pdb.set_trace()
         req = requests.get(url, headers=headers)
         req.raise_for_status()
         return req
