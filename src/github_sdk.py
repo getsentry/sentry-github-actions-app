@@ -21,9 +21,10 @@ class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
-    def __init__(self, token, dsn, dry_run=False) -> None:
-        self.token = token
+    def __init__(self, token, dsn, github_app=False, dry_run=False) -> None:
         self.dry_run = dry_run
+        self.github_app = github_app
+        self.token = token
         if dsn:
             base_uri, project_id = dsn.rsplit("/", 1)
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
@@ -32,8 +33,17 @@ class GithubClient:
 
     def _fetch_github(self, url):
         headers = {}
-        if self.token:
+        # Support JWT token for Github apps
+        if self.github_app:
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"Bearer {self.token}",
+            }
+        else:
             headers["Authorization"] = f"token {self.token}"
+        import pdb
+
+        pdb.set_trace()
         req = requests.get(url, headers=headers)
         req.raise_for_status()
         return req
