@@ -1,5 +1,5 @@
 import os
-from datetime import datetime as dt, timedelta
+import time
 
 import jwt
 import requests
@@ -7,10 +7,10 @@ import requests
 
 def get_private_key():
     private_key = None
-    if os.environ.get("GH_PRIVATE_KEY_PATH"):
+    if os.environ.get("GH_APP_PRIVATE_KEY_PATH"):
         # Open the file as f.
         # The function readlines() reads the file.
-        with open(os.environ["GH_PRIVATE_KEY_PATH"], "rb") as f:
+        with open(os.environ["GH_APP_PRIVATE_KEY_PATH"], "rb") as f:
             private_key = f.read()
     else:
         # XXX: On the next pass we need to support using Google Secrets
@@ -22,9 +22,9 @@ def get_private_key():
 def get_jwt_token(private_key, app_id):
     payload = {
         # issued at time, 60 seconds in the past to allow for clock drift
-        "iat": dt.utcnow() - timedelta(minutes=1),
-        # JWT expiration time (10 minute maximum)
-        "exp": dt.utcnow() + timedelta(minutes=10),
+        "iat": int(time.time()) - 60,
+        # JWT expiration time (5 minutes maximum)
+        "exp": int(time.time()) + 5 * 60,
         # GitHub App's identifier
         "iss": app_id,
     }

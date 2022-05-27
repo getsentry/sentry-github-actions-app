@@ -12,7 +12,7 @@ from src.github_app import get_access_tokens
 # You give us this https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
 # Or give it a path to a file with a webhook payload
 # e.g. tests/fixtures/jobA/job.json
-if __name__ == "__main__":
+def main():
     argument = sys.argv[1]
     token = None
 
@@ -43,3 +43,7 @@ if __name__ == "__main__":
         dsn=os.environ.get("SENTRY_TEST_DSN"),
     )
     client.send_trace(job)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
