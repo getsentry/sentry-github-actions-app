@@ -32,7 +32,7 @@ In Sentry.io (or self-hosted install):
 - Take note of the app's URL and use it when creating the Github webhook
 - Environment variables:
   - `APP_DSN`: Report errors to Sentry of the app itself
-  - `GH_SECRET`: Report errors to Sentry of the app itself
+  - `GH_WEBHOOK_SECRET`: Report errors to Sentry of the app itself
   - `GH_TOKEN`: This is used to validate API calls are coming from Github webhook
   - `SENTRY_GITHUB_DSN`: Where to report Github job transactions
   - `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
@@ -48,7 +48,7 @@ Create a Github webhook for a repo (or an org):
 - Choose `application/json`
 - Choose `workflow` events
 - Add a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
-  - Set `GH_SECRET` as an env variable in your deployment
+  - Set `GH_WEBHOOK_SECRET` as an env variable in your deployment
   - For more info, [read Github docs](https://docs.github.com/en/enterprise-server@3.4/developers/webhooks-and-events/webhooks/creating-webhooks)
 - Enter the URL of the deployed app
   - Use an ngrok URL for local development (read next section)

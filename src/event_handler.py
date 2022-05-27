@@ -28,6 +28,6 @@ class EventHandler:
         else:
             signature = headers["X-Hub-Signature-256"].replace("sha256=", "")
             body_signature = hmac.new(
-                self.secret.encode(), msg=str(body).encode(), digestmod="sha256"
+                self.secret.encode(), msg=body, digestmod="sha256"
             ).hexdigest()
             return hmac.compare_digest(body_signature, signature)

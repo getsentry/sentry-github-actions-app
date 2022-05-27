@@ -34,7 +34,11 @@ GH_TOKEN = os.environ.get("GH_TOKEN")
 SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
 
 app = Flask(__name__)
-handler = EventHandler(token=GH_TOKEN, dsn=SENTRY_GITHUB_DSN)
+handler = EventHandler(
+    secret=os.environ.get("GH_WEBHOOK_SECRET"),
+    token=GH_TOKEN,
+    dsn=SENTRY_GITHUB_DSN,
+)
 
 
 @app.route("/", methods=["POST"])
