@@ -5,6 +5,7 @@ from flask import abort, jsonify, request, Flask
 from sentry_sdk import init, capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 
+from .config import init
 from .github_app import GithubAppClient
 from .event_handler import EventHandler
 
@@ -21,6 +22,8 @@ if APP_DSN:
         environment=os.environ.get("FLASK_ENV", "production"),
     )
 
+config = init()
+
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
@@ -28,8 +31,8 @@ logger.setLevel(LOGGING_LEVEL)
 REFRESH_TOKEN_TIMESTAMP = None
 
 # The app can run in Github App mode or normal mode
-if os.environ.get("GH_APP_ID"):
-    client = GithubAppClient(installation_id=os.environ["GH_INSTALLATION_ID"])
+if config.get("gh_app"):
+    client = GithubAppClient(config["gh_app"])
     token, expires_at = client.get_token()
     REFRESH_TOKEN_TIMESTAMP = expires_at
 elif os.environ["GH_TOKEN"]:

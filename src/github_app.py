@@ -1,7 +1,6 @@
 """
 This module contains the logic to support running the app as a Github App
 """
-import os
 import time
 
 import jwt
@@ -9,25 +8,14 @@ import requests
 
 
 class GithubAppClient:
-    def __init__(self, installation_id) -> None:
-        self.headers = get_authentication_header()
+    # XXX: Can we use kwargs here?
+    def __init__(self, private_key, app_id, installation_id) -> None:
+        self.headers = get_authentication_header(private_key, app_id)
         self.installation_id = installation_id
 
     def get_token(self):
         token_info = get_token(self.installation_id, self.headers)
         return token_info["token"], token_info["expires_at"]
-
-
-def get_private_key():
-    private_key = None
-    if os.environ.get("GH_APP_PRIVATE_KEY_PATH"):
-        with open(os.environ["GH_APP_PRIVATE_KEY_PATH"], "rb") as f:
-            private_key = f.read()
-    else:
-        # XXX: On the next pass we need to support using Google Secrets
-        raise NotImplemented()
-
-    return private_key
 
 
 def get_jwt_token(private_key, app_id):
@@ -42,8 +30,8 @@ def get_jwt_token(private_key, app_id):
     return jwt.encode(payload, private_key, algorithm="RS256")
 
 
-def get_authentication_header():
-    jwt_token = get_jwt_token(get_private_key(), os.environ["GH_APP_ID"])
+def get_authentication_header(private_key, app_id):
+    jwt_token = get_jwt_token(private_key, app_id)
     return {
         "Accept": "application/vnd.github.v3+json",
         "Authorization": f"Bearer {jwt_token}",
