@@ -108,7 +108,7 @@ Table of commands:
 | pytest                             | Run Python tests                               |
 | pytest --cov=src --cov-report=html | Generate code coverage.                        |
 
-If you want to test the Github App set up, you need to make the App's webhook point to your ngrok set up, define `GH_APP_ID` and `GH_PRIVATE_KEY_PATH` as env variables.
+If you want to test the Github App set up, you need to make the App's webhook point to your ngrok set up, define `GH_APP_ID` and `GH_APP_PRIVATE_KEY_PATH` as env variables.
 
 ## Sentry staff info
 
