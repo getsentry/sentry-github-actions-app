@@ -1,19 +1,17 @@
 import logging
 import os
 
-import sentry_sdk
 from flask import abort, jsonify, request, Flask
-from sentry_sdk import capture_exception
-
+from sentry_sdk import init, capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from .github_app import get_access_tokens
+from .github_app import GithubAppClient
 from .event_handler import EventHandler
 
 APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
     # This tracks errors and performance of the app itself rather than GH workflows
-    sentry_sdk.init(
+    init(
         dsn=APP_DSN,
         integrations=[FlaskIntegration()],
         # Set traces_sample_rate to 1.0 to capture 100%
@@ -27,12 +25,13 @@ LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
+REFRESH_TOKEN_TIMESTAMP = None
 
-# The app can run in one mode or the other
+# The app can run in Github App mode or normal mode
 if os.environ.get("GH_APP_ID"):
-    access_tokens = get_access_tokens()
-    # XXX: We will change this in following PRs
-    TOKEN = access_tokens["armenzg-dev"]
+    client = GithubAppClient(installation_id=os.environ["GH_INSTALLATION_ID"])
+    token, expires_at = client.get_token()
+    REFRESH_TOKEN_TIMESTAMP = expires_at
 elif os.environ["GH_TOKEN"]:
     # We need an authorized token to fetch the API. If you have SSO on your org
     # you will need to grant permission.

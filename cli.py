@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sys
 
@@ -7,6 +8,8 @@ import requests
 from src.github_sdk import GithubClient
 from src.github_app import get_access_tokens
 
+logging.getLogger().setLevel(os.environ.get("LOGGING_LEVEL", "INFO"))
+logging.basicConfig()
 
 # Point this script to the URL of a job and we will trace it
 # You give us this https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
@@ -40,7 +43,7 @@ def main():
 
     client = GithubClient(
         token=token,
-        dsn=os.environ.get("SENTRY_TEST_DSN"),
+        dsn=os.environ.get("SENTRY_GITHUB_DSN"),
     )
     client.send_trace(job)
 

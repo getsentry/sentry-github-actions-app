@@ -1,3 +1,6 @@
+"""
+This module contains the logic to support running the app as a Github App
+"""
 import os
 import time
 
@@ -5,11 +8,19 @@ import jwt
 import requests
 
 
+class GithubAppClient:
+    def __init__(self, installation_id) -> None:
+        self.headers = get_authentication_header()
+        self.installation_id = installation_id
+
+    def get_token(self):
+        token_info = get_token(self.installation_id, self.headers)
+        return token_info["token"], token_info["expires_at"]
+
+
 def get_private_key():
     private_key = None
     if os.environ.get("GH_APP_PRIVATE_KEY_PATH"):
-        # Open the file as f.
-        # The function readlines() reads the file.
         with open(os.environ["GH_APP_PRIVATE_KEY_PATH"], "rb") as f:
             private_key = f.read()
     else:
@@ -31,37 +42,23 @@ def get_jwt_token(private_key, app_id):
     return jwt.encode(payload, private_key, algorithm="RS256")
 
 
-def get_org_for_token(token):
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"Bearer {token}",
-    }
-    req = requests.get("https://api.github.com/app", headers=headers)
-    req.raise_for_status()
-    response = req.json()
-
-    # The second value tracks the org this token is useful for
-    return response["owner"]["login"]
-
-
-def get_access_tokens():
-    access_tokens = {}
-
+def get_authentication_header():
     jwt_token = get_jwt_token(get_private_key(), os.environ["GH_APP_ID"])
-    headers = {
+    return {
         "Accept": "application/vnd.github.v3+json",
         "Authorization": f"Bearer {jwt_token}",
     }
 
-    req = requests.get(url="https://api.github.com/app/installations", headers=headers)
+
+# From docs: Installation access tokens have the permissions
+# configured by the GitHub App and expire after one hour.
+# XXX: Create solution to get a new token
+def get_token(installation_id, headers):
+    req = requests.post(
+        url=f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+        headers=headers,
+    )
     req.raise_for_status()
-    installations = req.json()
-
-    # From docs: Installation access tokens have the permissions
-    # configured by the GitHub App and expire after one hour.
-    for inst in installations:
-        req = requests.post(url=inst["access_tokens_url"], headers=headers)
-        req.raise_for_status()
-        access_tokens[inst["account"]["login"]] = req.json()
-
-    return access_tokens
+    resp = req.json()
+    # This token expires in an hour
+    return resp
