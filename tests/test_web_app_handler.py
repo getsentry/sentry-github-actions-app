@@ -84,9 +84,9 @@ def test_valid_signature(monkeypatch, webhook_event):
     handler = WebAppHandler()
     assert (
         handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
+            body=webhook_event["payload"],
             headers={
-                "X-Hub-Signature-256": "sha256=ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad",
+                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
             },
         )
         == True
@@ -99,9 +99,9 @@ def test_invalid_signature(monkeypatch, webhook_event):
     # This is unit testing that the function works as expected
     assert (
         handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
+            body=webhook_event["payload"],
             headers={
-                "X-Hub-Signature-256": "sha256=ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad",
+                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
             },
         )
         == False

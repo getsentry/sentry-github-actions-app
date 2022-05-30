@@ -39,7 +39,7 @@ class WebAppHandler:
             signature = headers["X-Hub-Signature-256"].replace("sha256=", "")
             body_signature = hmac.new(
                 self.config["gh"]["webhook_secret"].encode(),
-                msg=body,
+                msg=str(body).encode(),
                 digestmod="sha256",
             ).hexdigest()
             return hmac.compare_digest(body_signature, signature)
