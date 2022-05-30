@@ -6,7 +6,7 @@ This app allows your organization to trace Github Actions with Sentry. You can u
 It works by listening to a Github workflow events via a webhook in your repository. These events are the stored in Sentry as performance transactions.
 
 `github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
-`event_handler.py`: Business logic goes here.
+`web_app_handler.py`: Web app logic goes here.
 `main.py` contains the code to respond to webhook events.
 
 You can set up this app following the instructions under "Self-hosted". We also have a Github app to increase the security, however, it can only be installed in the `getsentry` Github org. In the future, we may make it pubclicly available. There's few things we need to figure out before we do.
