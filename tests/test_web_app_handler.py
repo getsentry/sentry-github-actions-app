@@ -1,10 +1,12 @@
+import json
+
 import pytest
 
-from src.event_handler import EventHandler
+from src.web_app_handler import WebAppHandler
 
 
 def test_invalid_header():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This is missing X-GitHub-Event in the headers
     with pytest.raises(KeyError) as excinfo:
         handler.handle_event(data={}, headers={})
@@ -14,7 +16,7 @@ def test_invalid_header():
 
 # XXX: These tests could be covered with a JSON schema
 def test_invalid_github_event():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This has an invalid X-GitHub-Event value
     reason, http_code = handler.handle_event(
         data={}, headers={"X-GitHub-Event": "not_a_workflow_job"}
@@ -24,7 +26,7 @@ def test_invalid_github_event():
 
 
 def test_missing_action_key():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This payload is missing the action key
     with pytest.raises(KeyError) as excinfo:
         handler.handle_event(
@@ -36,7 +38,7 @@ def test_missing_action_key():
 
 
 def test_not_completed_workflow():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This payload has an an action state we cannot process
     reason, http_code = handler.handle_event(
         data={"action": "not_completed"},
@@ -47,7 +49,7 @@ def test_not_completed_workflow():
 
 
 def test_missing_workflow_job():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This tries to send a trace but we're missing the workflow_job key
     with pytest.raises(KeyError) as excinfo:
         handler.handle_event(
@@ -60,7 +62,7 @@ def test_missing_workflow_job():
 
 # "Set SENTRY_GITHUB_SDN in order to send envelopes."
 def test_no_dsn_is_set():
-    handler = EventHandler()
+    handler = WebAppHandler()
     # This tries to process a job that does not have the conclusion key
     with pytest.raises(KeyError) as excinfo:
         handler.handle_event(
@@ -71,35 +73,44 @@ def test_no_dsn_is_set():
     assert msg == "conclusion"
 
 
-def test_valid_signature(webhook_event):
-    handler = EventHandler(secret="fake_secret")
+def test_valid_signature_no_secret(monkeypatch):
+    monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
+    handler = WebAppHandler()
+    assert handler.valid_signature(body={}, headers={}) == True
+
+
+def test_valid_signature(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    handler = WebAppHandler()
     assert (
         handler.valid_signature(
-            body=webhook_event["payload"],
+            body=json.dumps(webhook_event["payload"]).encode(),
             headers={
-                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+                "X-Hub-Signature-256": "sha256=ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad",
             },
         )
         == True
     )
 
 
-def test_invalid_signature(webhook_event):
-    handler = EventHandler(secret="mistyped_secret")
+def test_invalid_signature(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "mistyped_secret")
+    handler = WebAppHandler()
     # This is unit testing that the function works as expected
     assert (
         handler.valid_signature(
-            body=webhook_event["payload"],
+            body=json.dumps(webhook_event["payload"]).encode(),
             headers={
-                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
+                "X-Hub-Signature-256": "sha256=ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad",
             },
         )
         == False
     )
 
 
-def test_handle_event_with_secret(webhook_event):
-    handler = EventHandler(secret="fake_secret", dry_run=True)
+def test_handle_event_with_secret(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    handler = WebAppHandler(dry_run=True)
     reason, http_code = handler.handle_event(
         data=webhook_event["payload"],
         headers=webhook_event["headers"],
