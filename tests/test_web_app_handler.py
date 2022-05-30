@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock
 import json
 
 import pytest
@@ -111,9 +112,13 @@ def test_invalid_signature(monkeypatch, webhook_event):
 def test_handle_event_with_secret(monkeypatch, webhook_event):
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
     handler = WebAppHandler(dry_run=True)
+    handler.gh_client.send_trace = MagicMock()
     reason, http_code = handler.handle_event(
         data=webhook_event["payload"],
         headers=webhook_event["headers"],
+    )
+    handler.gh_client.send_trace.assert_called_with(
+        webhook_event["payload"]["workflow_job"]
     )
     assert reason == "OK"
     assert http_code == 200
