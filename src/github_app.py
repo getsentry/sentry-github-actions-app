@@ -1,6 +1,8 @@
 """
 This module contains the logic to support running the app as a Github App
 """
+import base64
+import os
 import time
 
 import jwt
@@ -8,7 +10,6 @@ import requests
 
 
 class GithubAppClient:
-    # XXX: Can we use kwargs here?
     def __init__(self, private_key, app_id, installation_id) -> None:
         self.headers = get_authentication_header(private_key, app_id)
         self.installation_id = installation_id

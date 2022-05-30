@@ -15,6 +15,28 @@ You can set up this app following the instructions under "Self-hosted". We also 
 
 Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry dsn.
 
+Here are the list of values needed to set up the Github App and the associated env variables:
+
+- App ID - `GH_APP_ID`
+  - When you load the app in Github, you will see it listed in the page
+- Installation ID - `GH_APP_INSTALLATION_ID`
+  - Once you install the app under your Github org, you will see it listed as one of your organizations integrations
+  - If you load the page, you will see the ID as part of the URL
+- Private key - `GH_APP_PRIVATE_KEY`
+  - When you load the Github App page, at the bottom of the page under "Private Keys" select "Generate a private key"
+  - A .pem file will be downloaded locally.
+  - Convert it into a single line value by using base64 (`base64 -i path_to_pem_file`)
+  - In GCP, you can store this value more securely under Github Secrets (rather than an env variable)
+
+For local development, you need to make the App's webhook point to your ngrok set up, create a new private key (a .pem file that gets automatically downloaded when generated).
+
+**NOTE**: Do not forget to delete the private key when you are done.
+
+```shell
+echo "GH_APP_ID=<app_id_defined_on_gh_app_page>" >> .env
+echo "GH_APP_PRIVATE_KEY=$(base64 -i $HOME/Downloads/name_of_app.date.private-key.pem)" >> .env
+```
+
 ### Current configuration
 
 - The App's webhook will point to the official deployment and share the same secret
@@ -107,8 +129,6 @@ Table of commands:
 | pre-commit install                 | Install pre-commit hooks                       |
 | pytest                             | Run Python tests                               |
 | pytest --cov=src --cov-report=html | Generate code coverage.                        |
-
-If you want to test the Github App set up, you need to make the App's webhook point to your ngrok set up, define `GH_APP_ID` and `GH_APP_PRIVATE_KEY_PATH` as env variables.
 
 ## Sentry staff info
 
