@@ -7,7 +7,7 @@ from sentry_sdk import capture_exception
 
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from .event_handler import EventHandler
+from .web_app_handler import WebAppHandler
 
 APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
@@ -26,15 +26,9 @@ LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
-# We need an authorized token to fetch the API. If you have SSO on your org you will need to grant permission
-# Your app and the Github webhook will share this secret
-# You can create an .env file and place the token in it
-GH_TOKEN = os.environ.get("GH_TOKEN")
-# Where to report Github actions transactions
-SENTRY_GITHUB_DSN = os.environ.get("SENTRY_GITHUB_DSN")
+handler = WebAppHandler()
 
 app = Flask(__name__)
-handler = EventHandler(token=GH_TOKEN, dsn=SENTRY_GITHUB_DSN)
 
 
 @app.route("/", methods=["POST"])
