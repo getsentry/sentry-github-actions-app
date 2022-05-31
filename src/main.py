@@ -9,10 +9,6 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 
 from .web_app_handler import WebAppHandler
 
-LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
-logger = logging.getLogger(__name__)
-logger.setLevel(LOGGING_LEVEL)
-
 APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
     # This tracks errors and performance of the app itself rather than GH workflows
@@ -25,6 +21,10 @@ if APP_DSN:
         traces_sample_rate=1.0,
         environment=os.environ.get("FLASK_ENV", "production"),
     )
+
+LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
+logger = logging.getLogger(__name__)
+logger.setLevel(LOGGING_LEVEL)
 
 handler = WebAppHandler()
 
