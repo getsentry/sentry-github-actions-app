@@ -22,7 +22,6 @@ testpaths = [ "tests" ]
 legacy_tox_ini = """
 [tox]
 envlist = py38
-requires = wheel
 skipsdist = true
 
 [testenv]
