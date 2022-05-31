@@ -42,12 +42,11 @@ jobs:
 
       - name: Set up
         run: |
-          pip install wheel
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install tox
 
       - name: Run tests
         run: |
-          pytest --cov=src --cov-report=xml
+          tox
 
       - uses: codecov/codecov-action@v2
         with:
