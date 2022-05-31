@@ -1,6 +1,7 @@
 import hmac
 import logging
 import os
+from typing import NamedTuple
 
 from .github_sdk import GithubClient
 
@@ -45,17 +46,26 @@ class WebAppHandler:
             return hmac.compare_digest(body_signature, signature)
 
 
-def init_config():
-    config = {
-        "gh": {
-            "webhook_secret": os.environ.get("GH_WEBHOOK_SECRET"),
-        },
-        "sentry": {
-            # Where to report Github actions transactions
-            "dsn": os.environ.get("SENTRY_GITHUB_DSN")
-        },
-    }
+class GitHubConfig(NamedTuple):
+    webhook_secret: str | None
+    token: str | None
 
-    config["gh"]["token"] = os.environ.get("GH_TOKEN")
+
+class SentryConfig(NamedTuple):
+    dsn: str | None
+
+
+class Config(NamedTuple):
+    gh: GitHubConfig
+    sentry: SentryConfig
+
+
+def init_config():
+    config = Config()
+    config.gh = GitHubConfig(
+        token=os.environ.get("GH_TOKEN"),
+        webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
+    )
+    config.sentry = SentryConfig(dsn=os.environ.get("SENTRY_GITHUB_DSN"))
 
     return config
