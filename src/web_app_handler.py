@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hmac
 import logging
 import os
@@ -14,8 +16,8 @@ class WebAppHandler:
     def __init__(self, dry_run=False):
         self.config = init_config()
         self.gh_client = GithubClient(
-            token=self.config["gh"]["token"],
-            dsn=self.config["sentry"]["dsn"],
+            token=self.config.gh.token,
+            dsn=self.config.sentry.dsn,
             dry_run=dry_run,
         )
 
@@ -34,12 +36,12 @@ class WebAppHandler:
         return reason, http_code
 
     def valid_signature(self, body, headers):
-        if not self.config["gh"]["webhook_secret"]:
+        if not self.config.gh.webhook_secret:
             return True
         else:
             signature = headers["X-Hub-Signature-256"].replace("sha256=", "")
             body_signature = hmac.new(
-                self.config["gh"]["webhook_secret"].encode(),
+                self.config.gh.webhook_secret.encode(),
                 msg=str(body).encode(),
                 digestmod="sha256",
             ).hexdigest()
@@ -61,11 +63,12 @@ class Config(NamedTuple):
 
 
 def init_config():
-    config = Config()
-    config.gh = GitHubConfig(
-        token=os.environ.get("GH_TOKEN"),
-        webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
+    config = Config(
+        GitHubConfig(
+            token=os.environ.get("GH_TOKEN"),
+            webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
+        ),
+        SentryConfig(dsn=os.environ.get("SENTRY_GITHUB_DSN")),
     )
-    config.sentry = SentryConfig(dsn=os.environ.get("SENTRY_GITHUB_DSN"))
 
     return config
