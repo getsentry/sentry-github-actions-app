@@ -5,6 +5,8 @@ import pytest
 
 from src.web_app_handler import WebAppHandler
 
+valid_signature = "34c42df584a30c42bc7882da6b20d9826f86425bd3142442bdf5a6ef241572d7"
+
 
 def test_invalid_header():
     handler = WebAppHandler()
@@ -86,9 +88,7 @@ def test_valid_signature(monkeypatch, webhook_event):
     assert (
         handler.valid_signature(
             body=json.dumps(webhook_event["payload"]).encode(),
-            headers={
-                "X-Hub-Signature-256": "sha256=ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad",
-            },
+            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
         )
         == True
     )
@@ -101,9 +101,7 @@ def test_invalid_signature(monkeypatch, webhook_event):
     assert (
         handler.valid_signature(
             body=json.dumps(webhook_event["payload"]).encode(),
-            headers={
-                "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8",
-            },
+            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
         )
         == False
     )
