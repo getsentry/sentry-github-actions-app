@@ -24,7 +24,8 @@ def test_initialize_without_setting_dsn():
         GithubClient()
     (msg,) = excinfo.value.args
     assert (
-        msg == "__init__() missing 2 required positional arguments: 'token' and 'dsn'"
+        msg
+        == "GithubClient.__init__() missing 2 required positional arguments: 'token' and 'dsn'"
     )
 
 
@@ -32,7 +33,9 @@ def test_initialize_without_setting_token():
     with pytest.raises(TypeError) as excinfo:
         GithubClient(dsn=DSN)
     (msg,) = excinfo.value.args
-    assert msg == "__init__() missing 1 required positional argument: 'token'"
+    assert (
+        msg == "GithubClient.__init__() missing 1 required positional argument: 'token'"
+    )
 
 
 @responses.activate

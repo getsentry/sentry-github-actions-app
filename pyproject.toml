@@ -21,7 +21,7 @@ testpaths = [ "tests" ]
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py38
+envlist = python3.10
 skipsdist = true
 
 [testenv]
