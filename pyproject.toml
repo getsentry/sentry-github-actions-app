@@ -1,0 +1,34 @@
+[project]
+name = "Github Actions to Sentry app"
+version = "0.0.1"
+description = "It listens to workflow events and inserts them into Sentry."
+authors = [
+    {name = "Armen Zambrano G.", email = "armenzg@sentry.io"},
+]
+license-expression = "MIT"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/getsentry/github-actions-app"
+
+[tool.pytest.ini_options]
+# -ra:  Show extra test summary info: (a)ll except passed
+# -q:   Decrease verbosity
+# --lf: Rerun only the tests that failed at the last run (or all if none failed)
+addopts = "-ra -q"
+testpaths = [ "tests" ]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38
+requires = wheel
+skipsdist = true
+
+[testenv]
+deps =
+    -rrequirements.txt
+    -rrequirements-dev.txt
+commands =
+    pytest
+"""
