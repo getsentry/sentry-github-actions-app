@@ -17,3 +17,17 @@ Homepage = "https://github.com/getsentry/github-actions-app"
 # --lf: Rerun only the tests that failed at the last run (or all if none failed)
 addopts = "-ra -q"
 testpaths = [ "tests" ]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = python3.10
+skipsdist = true
+
+[testenv]
+deps =
+    -rrequirements.txt
+    -rrequirements-dev.txt
+commands =
+    pytest
+"""
