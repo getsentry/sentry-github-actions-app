@@ -31,9 +31,8 @@ class GithubClient:
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
     def _fetch_github(self, url):
-        headers = {}
-        if self.token:
-            headers["Authorization"] = f"token {self.token}"
+        headers = {"Authorization": f"token {self.token}"}
+
         req = requests.get(url, headers=headers)
         req.raise_for_status()
         return req

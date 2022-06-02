@@ -6,10 +6,43 @@ This app allows your organization to trace Github Actions with Sentry. You can u
 It works by listening to a Github workflow events via a webhook in your repository. These events are the stored in Sentry as performance transactions.
 
 `github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
-`handle_event.py`: Business logic goes here.
+`web_app_handler.py`: Web app logic goes here.
 `main.py` contains the code to respond to webhook events.
 
-## Set up
+You can set up this app following the instructions under "Self-hosted". We also have a Github app to increase the security, however, it can only be installed in the `getsentry` Github org. In the future, we may make it pubclicly available. There's few things we need to figure out before we do.
+
+## Github app
+
+Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry dsn.
+
+Here are the list of values needed to set up the Github App and the associated env variables:
+
+- App ID - `GH_APP_ID`
+  - When you load the app in Github, you will see it listed in the page
+- Installation ID - `GH_APP_INSTALLATION_ID`
+  - Once you install the app under your Github org, you will see it listed as one of your organizations integrations
+  - If you load the page, you will see the ID as part of the URL
+- Private key - `GH_APP_PRIVATE_KEY`
+  - When you load the Github App page, at the bottom of the page under "Private Keys" select "Generate a private key"
+  - A .pem file will be downloaded locally.
+  - Convert it into a single line value by using base64 (`base64 -i path_to_pem_file`)
+  - In GCP, you can store this value more securely under Github Secrets (rather than an env variable)
+
+For local development, you need to make the App's webhook point to your ngrok set up, create a new private key (a .pem file that gets automatically downloaded when generated).
+
+**NOTE**: Do not forget to delete the private key when you are done.
+
+```shell
+echo "GH_APP_ID=<app_id_defined_on_gh_app_page>" >> .env
+echo "GH_APP_PRIVATE_KEY=$(base64 -i $HOME/Downloads/name_of_app.date.private-key.pem)" >> .env
+```
+
+### Current configuration
+
+- The App's webhook will point to the official deployment and share the same secret
+- Grant XYZ permissions
+
+## Self-hosted
 
 ### Sentry
 
@@ -32,7 +65,7 @@ In Sentry.io (or self-hosted install):
 - Take note of the app's URL and use it when creating the Github webhook
 - Environment variables:
   - `APP_DSN`: Report errors to Sentry of the app itself
-  - `GH_WEBHOOK_SECRET`: Report errors to Sentry of the app itself
+  - `GH_WEBHOOK_SECRET`: Secret shared between Github's webhook and your app
   - `GH_TOKEN`: This is used to validate API calls are coming from Github webhook
   - `SENTRY_GITHUB_DSN`: Where to report Github job transactions
   - `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
@@ -75,9 +108,9 @@ You can ingest a single job without webhooks or starting the app by using the cl
 
 ```shell
 # This is a normal URL of a job on Github
-python3 src/cli.py https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
+python3 cli.py https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
 # From test fixture
-python3 src/cli.py tests/fixtures/jobA/job.json
+python3 cli.py tests/fixtures/jobA/job.json
 ```
 
 Steps to ingest events from a repository:
