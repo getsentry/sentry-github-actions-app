@@ -23,8 +23,14 @@ if APP_DSN:
     )
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
+# Set the logging level for all loggers (e.g. requests)
+logging.getLogger().setLevel(LOGGING_LEVEL)
+logging.basicConfig()
+
+# Logger for this module
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
+logger.info("App logging is working.")
 
 handler = WebAppHandler()
 

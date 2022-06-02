@@ -6,7 +6,8 @@ import sys
 import requests
 
 from src.github_sdk import GithubClient
-from src.github_app import get_access_tokens
+from src.github_app import GithubAppToken
+from src.web_app_handler import init_config
 
 logging.getLogger().setLevel(os.environ.get("LOGGING_LEVEL", "INFO"))
 logging.basicConfig()
@@ -31,13 +32,10 @@ def main():
             job = json.load(f)
         org = job["url"].split("/")[4]
 
+    config = init_config()
     if os.environ.get("GH_APP_ID"):
-        access_tokens = get_access_tokens()
-        assert org in access_tokens, (
-            f'You are trying to reach "{org}", however, '
-            + f'we only have access to these orgs: "{access_tokens.keys()}".'
-        )
-        token = access_tokens[org]["token"]
+        app = GithubAppToken(**config.gh_app._asdict())
+        token = app.get_token()
     else:
         token = os.environ["GH_TOKEN"]
 
