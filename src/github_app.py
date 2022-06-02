@@ -1,7 +1,9 @@
 """
 This module contains the logic to support running the app as a Github App
 """
+import contextlib
 import time
+from typing import Generator
 
 import jwt
 import requests
@@ -26,7 +28,10 @@ class GithubAppToken:
             # This token expires in an hour
             yield resp["token"]
         finally:
-            requests.delete("https://api.github.com/installation/token", headers={"Authorization": f"token {resp['token']}"})
+            requests.delete(
+                "https://api.github.com/installation/token",
+                headers={"Authorization": f"token {resp['token']}"},
+            )
 
     def get_jwt_token(self, private_key, app_id):
         payload = {
