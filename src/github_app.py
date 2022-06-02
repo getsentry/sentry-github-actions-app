@@ -14,22 +14,19 @@ class GithubAppToken:
 
     # From docs: Installation access tokens have the permissions
     # configured by the GitHub App and expire after one hour.
-    def get_token(self):
+    @contextlib.contextmanager
+    def get_token(self) -> Generator[str, None, None]:
         req = requests.post(
             url=f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
             headers=self.headers,
         )
         req.raise_for_status()
         resp = req.json()
-        # This token expires in an hour
-        return resp["token"]
-
-    # This is executed when we enter a with block
-    def __enter__(self):
-        return self.get_token()
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        requests.delete("https://api.github.com/installation/token")
+        try:
+            # This token expires in an hour
+            yield resp["token"]
+        finally:
+            requests.delete("https://api.github.com/installation/token", headers={"Authorization": f"token {resp['token']}"})
 
     def get_jwt_token(self, private_key, app_id):
         payload = {
