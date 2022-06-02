@@ -1,11 +1,11 @@
-from unittest.mock import MagicMock
+from unittest import mock
 import json
 
 import pytest
 
 from src.web_app_handler import WebAppHandler
 
-valid_signature = "34c42df584a30c42bc7882da6b20d9826f86425bd3142442bdf5a6ef241572d7"
+valid_signature = "ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad"
 
 
 def test_invalid_header():
@@ -51,7 +51,8 @@ def test_not_completed_workflow():
     assert http_code == 200
 
 
-def test_missing_workflow_job():
+def test_missing_workflow_job(monkeypatch):
+    monkeypatch.delenv("GH_APP_ID", raising=False)
     handler = WebAppHandler()
     # This tries to send a trace but we're missing the workflow_job key
     with pytest.raises(KeyError) as excinfo:
@@ -64,7 +65,8 @@ def test_missing_workflow_job():
 
 
 # "Set SENTRY_GITHUB_SDN in order to send envelopes."
-def test_no_dsn_is_set():
+def test_no_dsn_is_set(monkeypatch):
+    monkeypatch.delenv("GH_APP_ID", raising=False)
     handler = WebAppHandler()
     # This tries to process a job that does not have the conclusion key
     with pytest.raises(KeyError) as excinfo:
@@ -110,13 +112,9 @@ def test_invalid_signature(monkeypatch, webhook_event):
 def test_handle_event_with_secret(monkeypatch, webhook_event):
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
     handler = WebAppHandler(dry_run=True)
-    handler.gh_client.send_trace = MagicMock()
     reason, http_code = handler.handle_event(
         data=webhook_event["payload"],
         headers=webhook_event["headers"],
-    )
-    handler.gh_client.send_trace.assert_called_with(
-        webhook_event["payload"]["workflow_job"]
     )
     assert reason == "OK"
     assert http_code == 200

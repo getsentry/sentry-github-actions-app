@@ -6,10 +6,8 @@ import logging
 import os
 from typing import NamedTuple
 
-from google.cloud import secretmanager
-
+from .github_app import GithubAppToken
 from .github_sdk import GithubClient
-from .github_app import GithubAppClient
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,11 +17,7 @@ logger.setLevel(LOGGING_LEVEL)
 class WebAppHandler:
     def __init__(self, dry_run=False):
         self.config = init_config()
-        self.gh_client = GithubClient(
-            token=self.config.gh.token,
-            dsn=self.config.sentry.dsn,
-            dry_run=dry_run,
-        )
+        self.dry_run = dry_run
 
     def handle_event(self, data, headers):
         # We return 200 to make webhook not turn red since everything got processed well
@@ -35,7 +29,26 @@ class WebAppHandler:
         elif data["action"] != "completed":
             reason = "We cannot do anything with this workflow state."
         else:
-            self.gh_client.send_trace(data["workflow_job"])
+            # For now, this simplifies testing
+            if self.dry_run:
+                return reason, http_code
+
+            # We are executing in Github App mode
+            if self.config.gh_app:
+                with GithubAppToken(**self.config.gh_app._asdict()) as token:
+                    client = GithubClient(
+                        token=token,
+                        dsn=self.config.sentry.dsn,
+                        dry_run=self.dry_run,
+                    )
+                    client.send_trace(data["workflow_job"])
+            else:
+                client = GithubClient(
+                    token=self.config.gh.token,
+                    dsn=self.config.sentry.dsn,
+                    dry_run=self.dry_run,
+                )
+                client.send_trace(data["workflow_job"])
 
         return reason, http_code
 
@@ -59,7 +72,6 @@ class GithubAppConfig(NamedTuple):
 
 
 class GitHubConfig(NamedTuple):
-    gh_app: GithubAppConfig | None
     webhook_secret: str | None
     token: str | None
 
@@ -69,6 +81,7 @@ class SentryConfig(NamedTuple):
 
 
 class Config(NamedTuple):
+    gh_app: GithubAppConfig | None
     gh: GitHubConfig
     sentry: SentryConfig
 
@@ -79,7 +92,11 @@ def init_config():
     if os.environ.get("GH_APP_ID"):
         # K_SERVICE is a reserved variable for Google Cloud services
         if os.environ.get("K_SERVICE"):
-            # Put in here since it affects test execution
+            # XXX: Put in here since it currently affects test execution
+            # ImportError: dlopen(/Users/armenzg/code/github-actions-app/.venv/lib/python3.10/site-packages/grpc/_cython/cygrpc.cpython-310-darwin.so, 0x0002): tried: '/Users/armenzg/code/github-actions-app/.venv/lib/python3.10/site-packages/grpc/_cython/cygrpc.cpython-310-darwin.so'
+            # (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e'))
+            from google.cloud import secretmanager
+
             gcp_client = secretmanager.SecretManagerServiceClient()
             uri = f"projects/sentry-dev-tooling/secrets/GithubAppPrivateKey/versions/1"
 
@@ -91,21 +108,20 @@ def init_config():
             # This block only applies for development since we are not executing on GCP
             private_key = base64.b64decode(os.environ["GH_APP_PRIVATE_KEY"])
 
-        gh_app = {
-            "app_id": os.environ["GH_APP_ID"],
+        gh_app = GithubAppConfig(
+            app_id=os.environ["GH_APP_ID"],
             # Under your organization, under integrations you should see the app installed
             # The URL will contain the id of your installation
-            "installation_id": os.environ["GH_APP_INSTALLATION_ID"],
-            "private_key": private_key,
-        }
+            installation_id=os.environ["GH_APP_INSTALLATION_ID"],
+            private_key=private_key,
+        )
 
-    config = Config(
+    return Config(
+        gh_app,
         GitHubConfig(
-            gh_app=GithubAppConfig(**gh_app),
+            # This token is a PAT
             token=os.environ.get("GH_TOKEN"),
             webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
         ),
         SentryConfig(dsn=os.environ.get("SENTRY_GITHUB_DSN")),
     )
-
-    return config

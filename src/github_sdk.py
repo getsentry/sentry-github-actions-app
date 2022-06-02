@@ -22,8 +22,8 @@ class GithubClient:
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
     def __init__(self, token, dsn, dry_run=False) -> None:
-        self.dry_run = dry_run
         self.token = token
+        self.dry_run = dry_run
         if dsn:
             base_uri, project_id = dsn.rsplit("/", 1)
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
@@ -31,9 +31,7 @@ class GithubClient:
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
     def _fetch_github(self, url):
-        headers = {}
-        if self.token:
-            headers["Authorization"] = f"token {self.token}"
+        headers = {"Authorization": f"token {self.token}"}
 
         req = requests.get(url, headers=headers)
         req.raise_for_status()
