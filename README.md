@@ -1,19 +1,23 @@
-# Github actions Sentry app
+# Sentry Github Actions app
 
 **DISCLAIMER**: This app/sdk are still in experimental mode. Please file an issue and ask of the current state before going ahead and using it.
 
 This app allows your organization to trace Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
-It works by listening to a Github workflow events via a webhook in your repository. These events are the stored in Sentry as performance transactions.
+It works by listening to a Github workflow events via a webhook in your repository (You may be able to create a Github App of your own to avoid using personal or bot tokens).
+These events are then stored in Sentry as performance transactions.
 
-`github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
-`web_app_handler.py`: Web app logic goes here.
-`main.py` contains the code to respond to webhook events.
+Code explanation:
 
-You can set up this app following the instructions under "Self-hosted". We also have a Github app to increase the security, however, it can only be installed in the `getsentry` Github org. In the future, we may make it pubclicly available. There's few things we need to figure out before we do.
+- `github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
+- `github_app.py` contains code to handle a Github App installation.
+- `web_app_handler.py`: Web app logic goes here.
+- `main.py` contains the code to respond to webhook events.
 
-## Github app
+You can set up this app following the instructions under "Self-hosted". We also have a Github App to increase the security, however, it can only be installed in the `getsentry` Github org. In the future, we may make it pubclicly available. There's few things we need to figure out before we do.
 
-Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry dsn.
+## Github App
+
+**NOTE**: Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry DSN. See [milestone](https://github.com/getsentry/sentry-github-actions-app/milestone/1) to see required work.
 
 Here are the list of values needed to set up the Github App and the associated env variables:
 
@@ -32,15 +36,27 @@ For local development, you need to make the App's webhook point to your ngrok se
 
 **NOTE**: Do not forget to delete the private key when you are done.
 
-```shell
-echo "GH_APP_ID=<app_id_defined_on_gh_app_page>" >> .env
-echo "GH_APP_PRIVATE_KEY=$(base64 -i $HOME/Downloads/name_of_app.date.private-key.pem)" >> .env
-```
+### Set up
 
-### Current configuration
+When creating the Github App for the first time, these are non-default relevant changes made:
 
-- The App's webhook will point to the official deployment and share the same secret
-- Grant XYZ permissions
+- Configure the Webhook URL to point to the GC deployment
+- Set the Webhook Secret to be the same as the GC deployment
+- Set the following permissions:
+  - Actions: Workflows, workflow runs and artifacts -> Read-only
+    - Specific events: [Workflow job](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#workflow_job)
+
+After the creation of the app:
+
+- Click on `Generate a private key`
+  - Run `base64 -i <path_to_download_file>`
+  - Store the value in Google Secrets
+  - Delete the file just downloaded
+- Add to the deployment the variable `GH_APP_ID`
+- Select "Install App" and install the app on your org
+  - Grant access to "All Repositories"
+- Look at the URL of the installation
+  - Add to the deployment the variable `GH_APP_INSTALLATION_ID`
 
 ## Self-hosted
 
@@ -52,6 +68,8 @@ In Sentry.io (or self-hosted install):
 - Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
 
 ### Create a Github personal token
+
+**NOTE**: This has the security risk that the token could be used to impersonate you.
 
 - Create a [personal token](https://github.com/settings/tokens)
   - You do not need to give it any scopes
@@ -132,4 +150,4 @@ Table of commands:
 
 ## Sentry staff info
 
-Google Cloud Build will automatically build a Docker image when the code merges on `main`. Logging to Google Cloud Run and deploy the latest image.
+Google Cloud Build will automatically build a Docker image when the code merges on `armenzg/github-actions-app:main`. Logging to Google Cloud Run and deploy the latest image.
