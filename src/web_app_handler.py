@@ -96,7 +96,9 @@ def get_gh_app_private_key():
         from google.cloud import secretmanager
 
         gcp_client = secretmanager.SecretManagerServiceClient()
-        uri = f"projects/sentry-dev-tooling/secrets/GithubAppPrivateKey/versions/1"
+        uri = (
+            f"projects/sentry-dev-tooling/secrets/SentryGithubAppPrivateKey/versions/1"
+        )
 
         logger.info(f"Grabbing secret from {uri}")
         private_key = base64.b64decode(
