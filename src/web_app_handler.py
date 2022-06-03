@@ -89,7 +89,7 @@ class Config(NamedTuple):
 def get_gh_app_private_key():
     private_key = None
     # K_SERVICE is a reserved variable for Google Cloud services
-    if os.environ.get("K_SERVICE"):
+    if os.environ.get("K_SERVICE") and not os.environ.get("GH_APP_PRIVATE_KEY"):
         # XXX: Put in here since it currently affects test execution
         # ImportError: dlopen(/Users/armenzg/code/github-actions-app/.venv/lib/python3.10/site-packages/grpc/_cython/cygrpc.cpython-310-darwin.so, 0x0002): tried: '/Users/armenzg/code/github-actions-app/.venv/lib/python3.10/site-packages/grpc/_cython/cygrpc.cpython-310-darwin.so'
         # (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e'))
