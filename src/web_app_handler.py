@@ -35,7 +35,9 @@ class WebAppHandler:
 
             # We are executing in Github App mode
             if self.config.gh_app:
-                with GithubAppToken(**self.config.gh_app._asdict()) as token:
+                with GithubAppToken(
+                    **self.config.gh_app._asdict()
+                ).get_token() as token:
                     client = GithubClient(
                         token=token,
                         dsn=self.config.sentry.dsn,
