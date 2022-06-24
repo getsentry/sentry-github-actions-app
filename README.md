@@ -1,111 +1,121 @@
-# Sentry Github Actions app
+# Sentry Github Actions App
 
-**DISCLAIMER**: This app/sdk are still in experimental mode. Please file an issue and ask of the current state before going ahead and using it.
+**NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
-This app allows your organization to trace Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
-It works by listening to a Github workflow events via a webhook in your repository (You may be able to create a Github App of your own to avoid using personal or bot tokens).
-These events are then stored in Sentry as performance transactions.
+This app allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
+
+It works by listening to Github workflow events via a webhook configured in a Github App. These events are then stored in Sentry as performance transactions. The best value for this project is when you have [Sentry's Discover](https://docs.sentry.io/product/discover-queries/) and [Dashboards](https://docs.sentry.io/product/dashboards/) in order to slice the data and answer the questions you care about. In a sense, this project turns Github's CI as an app that Sentry monitors, thus, you can use many of the features you're familiar with.
+
+There's likely products out there that can give you insights into Github's CI, however, this may be cheaper, it saves you having to add another vendor and your developers are already familiar with using Sentry.
+
+## Examples
+
+This screenshot shows that you can group Github Actions through various tags in Sentry's Discover:
+
+<img width="711" alt="image" src="https://user-images.githubusercontent.com/44410/175557087-2ca904e1-d815-4ae0-a6a1-01b4ca38323a.png">
+
+This screenshot shows the transaction view for an individual Github Action showing each step of the job:
+
+<img width="992" alt="image" src="https://user-images.githubusercontent.com/44410/175558737-7eca4036-73ce-4ed2-8b5a-51b5d882a814.png">
+
+
+## Features
+
+Here's a list of benefits you will get if you use this project:
+
+- Visualize a Github job and the breakdown per step
+- Create CI alerts
+  - For instance, if your main branch has a failure rate above a certain threshold
+- Create widgets and dashboards showing your CI data
+  - For instance, slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
+  - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt
+
+
+## Do you want to try this?
+
+Steps to follow:
+
+- Fork the app
+- Create a Docker build
+- Deploy the image to your provider
+  - If you don't use GCP you may need to make some changes to the code
+- Create a Github App and install it in all your repos
+  - Instructions are provided below
+
+Please, give us some feedback in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+
+## Code
 
 Code explanation:
 
-- `github_sdk.py` has the generic logic to submit Github jobs as transactions. Eventually this file could be released separatedly.
+- `github_sdk.py` has the generic logic to submit Github jobs as Sentry transactions. This module could be released separatedly.
 - `github_app.py` contains code to handle a Github App installation.
 - `web_app_handler.py`: Web app logic goes here.
 - `main.py` contains the code to respond to webhook events.
 
-You can set up this app following the instructions under "Self-hosted". We also have a Github App to increase the security, however, it can only be installed in the `getsentry` Github org. In the future, we may make it pubclicly available. There's few things we need to figure out before we do.
+## Set Up
 
-## Github App
+**NOTE**: Currently, this app is only used internally. See [milestone](https://github.com/getsentry/sentry-github-actions-app/milestone/1) for required work to support ingesting data from other orgs.
 
-**NOTE**: Currently, it is only used internally. We do not have a way of mapping CI events from one org to a specific Sentry DSN. See [milestone](https://github.com/getsentry/sentry-github-actions-app/milestone/1) to see required work.
+These are the steps you will need to set this backend and Github app for your organization.
 
-Here are the list of values needed to set up the Github App and the associated env variables:
+The steps of the next two sections are related. You will be generating keys and variables that are need to configure each component (the backend and the Github App), thus, you will need to go back and forth.
 
-- App ID - `GH_APP_ID`
-  - When you load the app in Github, you will see it listed in the page
-- Installation ID - `GH_APP_INSTALLATION_ID`
-  - Once you install the app under your Github org, you will see it listed as one of your organizations integrations
+### Sentry SaaS (or self-hosted Sentry)
+
+In Sentry.io:
+
+- Create a project to track errors of the backend itself (`APP_DSN` in section below)
+- Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
+
+### Backend deployment
+
+- Deploy the app to a service (e.g. GCP) and make it publicly reachable
+  - Take note of the app's URL and use it when creating the Github app webhook
+
+Common environment variables:
+
+- `APP_DSN`: Report your deployment errors to Sentry
+- `GH_WEBHOOK_SECRET`: Secret shared between Github's webhook and your app
+  - Create a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
+- `SENTRY_GITHUB_DSN`: Where to report your Github job transactions
+- `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
+
+Github App specific variables:
+
+- `GH_APP_ID` - Github App ID
+  - When you create the Github App, you will see the value listed in the page
+- `GH_APP_INSTALLATION_ID` - Github App Installation ID
+  - Once you install the app under your Github org, you will see it listed as one of your organizations' integrations
   - If you load the page, you will see the ID as part of the URL
-- Private key - `GH_APP_PRIVATE_KEY`
+- `GH_APP_PRIVATE_KEY` - Private key
   - When you load the Github App page, at the bottom of the page under "Private Keys" select "Generate a private key"
   - A .pem file will be downloaded locally.
   - Convert it into a single line value by using base64 (`base64 -i path_to_pem_file`)
-  - In GCP, you can store this value more securely under Github Secrets (rather than an env variable)
 
-For local development, you need to make the App's webhook point to your ngrok set up, create a new private key (a .pem file that gets automatically downloaded when generated).
+For local development, you need to make the App's webhook point to your ngrok set up. You should create a new private key (a .pem file that gets automatically downloaded when generated) for your local development and do not forget to delete the private key when you are done.
 
-**NOTE**: Do not forget to delete the private key when you are done.
+### The Github App
 
-### Set up
+After creating the Github App for the first time there are some changes you need to make:
 
-When creating the Github App for the first time, these are non-default relevant changes made:
-
-- Configure the Webhook URL to point to the GC deployment
-- Set the Webhook Secret to be the same as the GC deployment
-- Set the following permissions:
+- Configure the Webhook URL to point to the backend deployment
+- Set the Webhook Secret to be the same as the backend deployment
+- Set the following permissions for the app:
   - Actions: Workflows, workflow runs and artifacts -> Read-only
-    - Specific events: [Workflow job](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#workflow_job)
+   - Specific events: [Workflow job](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#workflow_job)
 
-After the creation of the app:
+After completing the creation of the app you will need to make few more changes:
 
 - Click on `Generate a private key`
   - Run `base64 -i <path_to_download_file>`
   - Store the value in Google Secrets
   - Delete the file just downloaded
 - Add to the deployment the variable `GH_APP_ID`
-- Select "Install App" and install the app on your org
+- Select "Install App" and install the app on your Github org
   - Grant access to "All Repositories"
-- Look at the URL of the installation
+- Look at the URL of the installation and you will find the installation ID
   - Add to the deployment the variable `GH_APP_INSTALLATION_ID`
-
-## Self-hosted
-
-### Sentry
-
-In Sentry.io (or self-hosted install):
-
-- Create a project to track errors of the app itself (`APP_DSN` in section below)
-- Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
-
-### Create a Github personal token
-
-**NOTE**: This has the security risk that the token could be used to impersonate you.
-
-- Create a [personal token](https://github.com/settings/tokens)
-  - You do not need to give it any scopes
-  - Take note of the token as you will need to define it as `GH_TOKEN` in the next section
-  - After creating the token, some orgs [require authorizing tokens](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on), thus, select "Configure SSO" if you see it
-- If this is for development, you can place the token in a file named `.env` as `GH_TOKEN`
-
-### Deployment set up
-
-- Deploy the app to a service (e.g. GCP) and make it publicly reachable
-- Take note of the app's URL and use it when creating the Github webhook
-- Environment variables:
-  - `APP_DSN`: Report errors to Sentry of the app itself
-  - `GH_WEBHOOK_SECRET`: Secret shared between Github's webhook and your app
-  - `GH_TOKEN`: This is used to validate API calls are coming from Github webhook
-  - `SENTRY_GITHUB_DSN`: Where to report Github job transactions
-  - `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
-
-**Optional**: Once you have a deployment, you may wish to go back to Sentry and whitelist the deployment.
-
-### Github webhook
-
-Create a Github webhook for a repo (or an org):
-
-- Under settings select "Webhooks":
-- Choose "Add webhook"
-- Choose `application/json`
-- Choose `workflow` events
-- Add a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
-  - Set `GH_WEBHOOK_SECRET` as an env variable in your deployment
-  - For more info, [read Github docs](https://docs.github.com/en/enterprise-server@3.4/developers/webhooks-and-events/webhooks/creating-webhooks)
-- Enter the URL of the deployed app
-  - Use an ngrok URL for local development (read next section)
-- Save the webhook
-
-**Note**: Webhook events will immediately be sent. Disable the hook if you're not ready.
 
 ## Local development
 
@@ -122,7 +132,7 @@ pip install wheel
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-You can ingest a single job without webhooks or starting the app by using the cli. For example:
+You can ingest a single job without webhooks by using the cli. For example:
 
 ```shell
 # This is a normal URL of a job on Github
@@ -150,4 +160,4 @@ Table of commands:
 
 ## Sentry staff info
 
-Google Cloud Build will automatically build a Docker image when the code merges on `armenzg/github-actions-app:main`. Logging to Google Cloud Run and deploy the latest image.
+Google Cloud Build will automatically build a Docker image when the code merges on `main`. Log-in to Google Cloud Run and deploy the latest image.
