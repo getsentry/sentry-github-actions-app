@@ -11,13 +11,33 @@ on:
       - "**.md"
 
 jobs:
+  # In reality, this will not be completely accurate as only when a Docker image is deployed
+  # we will truly have a deployed release
+  # XXX: Pin this to just the main branch
+  release:
+    name: Create a Sentry release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        with:
+          projects: "sentry-github-actions-app"
+          environment: production
+
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Build
         run: |
@@ -34,7 +54,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - uses: actions/setup-python@v3
         with:
@@ -58,7 +78,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - uses: actions/setup-python@v3
         with:
