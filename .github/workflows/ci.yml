@@ -16,7 +16,7 @@ jobs:
   # In reality, this will not be completely accurate as only when a Docker image is deployed
   # we will truly have a deployed release
   release:
-    # XXX: Pin this to just the main branch
+    # XXX: Pin this to the main branch
     if: ${{ github.ref == 'refs/heads/armenzg/feat/create-sentry-releases' }}
     name: Create a Sentry release
     runs-on: ubuntu-latest
