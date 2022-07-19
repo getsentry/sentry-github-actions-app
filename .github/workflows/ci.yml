@@ -25,6 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
+          # This is necessary for the a release to include commits
           fetch-depth: 0
 
       - name: Create Sentry release
@@ -35,6 +36,8 @@ jobs:
         with:
           projects: "sentry-github-actions-app"
           environment: production
+          # We may need this because we have created releases from the PR rather than from pushes
+          ignore_missing: true
 
   docker-build:
     name: Docker build
