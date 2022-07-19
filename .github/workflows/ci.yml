@@ -24,14 +24,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create Sentry release
-        uses: getsentry/action-release@v1
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-        with:
-          projects: "sentry-github-actions-app"
-          environment: production
+      - name: Set up
+        run: |
+          echo ${{ github.sha }}
+          echo ${{ github.ref }}
+          echo ${{ github.head_ref }}
+
+      # - name: Create Sentry release
+      #   uses: getsentry/action-release@master
+      #   env:
+      #     SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      #     SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      #   with:
+      #     projects: "sentry-github-actions-app"
+      #     environment: production
 
   docker-build:
     name: Docker build
