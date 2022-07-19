@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - "main"
+      # XXX: For now
       - "armenzg/feat/create-sentry-releases"
     paths-ignore:
       - "**.md"
@@ -14,8 +15,9 @@ on:
 jobs:
   # In reality, this will not be completely accurate as only when a Docker image is deployed
   # we will truly have a deployed release
-  # XXX: Pin this to just the main branch
   release:
+    # XXX: Pin this to just the main branch
+    if: ${{ github.ref == 'refs/heads/armenzg/feat/create-sentry-releases' }}
     name: Create a Sentry release
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -25,20 +27,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up
-        run: |
-          echo ${{ github.sha }}
-          echo ${{ github.ref }}
-          echo ${{ github.head_ref }}
-
-      # - name: Create Sentry release
-      #   uses: getsentry/action-release@master
-      #   env:
-      #     SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      #     SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-      #   with:
-      #     projects: "sentry-github-actions-app"
-      #     environment: production
+      - name: Create Sentry release
+        uses: getsentry/action-release@master
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        with:
+          projects: "sentry-github-actions-app"
+          environment: production
 
   docker-build:
     name: Docker build
