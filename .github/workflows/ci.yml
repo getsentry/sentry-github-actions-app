@@ -7,17 +7,14 @@ on:
   push:
     branches:
       - "main"
-      # XXX: For now
-      - "armenzg/feat/create-sentry-releases"
     paths-ignore:
       - "**.md"
 
 jobs:
-  # In reality, this will not be completely accurate as only when a Docker image is deployed
-  # we will truly have a deployed release
+  # In reality, this will not be completely accurate as only when a Docker image is deployed to GCP
+  # we will truly have a deployed release. Nevertheless, this will be useful once it is deployed
+  # since it will help add commits to releases
   release:
-    # XXX: Pin this to the main branch
-    if: ${{ github.ref == 'refs/heads/armenzg/feat/create-sentry-releases' }}
     name: Create a Sentry release
     runs-on: ubuntu-latest
     timeout-minutes: 10
