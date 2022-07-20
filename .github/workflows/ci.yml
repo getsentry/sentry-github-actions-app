@@ -27,13 +27,15 @@ jobs:
           fetch-depth: 0
 
       - name: Create Sentry release
-        uses: getsentry/action-release@master
+        uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         with:
           projects: "sentry-github-actions-app"
           environment: production
+          # We have created releases from the PR, thus, the CLI gets confused finding commits
+          ignore_missing: true
 
   docker-build:
     name: Docker build
