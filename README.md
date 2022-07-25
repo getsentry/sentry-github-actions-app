@@ -1,10 +1,14 @@
 # Sentry Github Actions App
 
-**NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+**NOTE**: You can try this project but you will need to deploy your own ingestion app. If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
 This app allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
 
-It works by listening to Github workflow events via a webhook configured in a Github App. These events are then stored in Sentry as performance transactions. The best value for this project is when you have [Sentry's Discover](https://docs.sentry.io/product/discover-queries/) and [Dashboards](https://docs.sentry.io/product/dashboards/) in order to slice the data and answer the questions you care about. In a sense, this project turns Github's CI as an app that Sentry monitors, thus, you can use many of the features you're familiar with.
+It works by listening to Github workflow events via a webhook configured in a Github App. These events are then stored in Sentry as performance transactions. The best value for this project is when you have [Sentry's Discover](https://docs.sentry.io/product/discover-queries/) and [Dashboards](https://docs.sentry.io/product/dashboards/) in order to slice the data and answer the questions you care about. In a sense, this project turns Github's CI into an app which Sentry monitors, thus, you can use many of the features you're already familiar with.
+
+**NOTE**: The Discover feature is only available on either a Business or Trial Plan.
+
+**NOTE**: The Dashboards feature is only available on the Team Plan or higher.
 
 There's likely products out there that can give you insights into Github's CI, however, this may be cheaper, it saves you having to add another vendor and your developers are already familiar with using Sentry.
 
@@ -24,14 +28,18 @@ This screenshot shows the transaction view for an individual Github Action showi
 Here's a list of benefits you will get if you use this project:
 
 - Visualize a Github job and the breakdown per step
+  - For instance, it makes it easy to see what percentage of the jobs are dedicated to set up versus running tests
 - Create CI alerts
   - For instance, if your main branch has a failure rate above a certain threshold
+  - Notice when `on: schedule` workflows fail which currently Github does not make it easy to notice
 - Create widgets and dashboards showing your CI data
-  - For instance, slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
+  - For instance you can show: slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
   - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt
 
 
 ## Do you want to try this?
+
+**NOTE**: If we invested a bit more on this project we would reduce the following steps to just install this Github App and add this configuration file somewhere to be determined.
 
 Steps to follow:
 
@@ -57,7 +65,7 @@ Code explanation:
 
 **NOTE**: Currently, this app is only used internally. See [milestone](https://github.com/getsentry/sentry-github-actions-app/milestone/1) for required work to support ingesting data from other orgs.
 
-These are the steps you will need to set this backend and Github app for your organization.
+These are the steps you will need to set up this backend and Github app for your organization.
 
 The steps of the next two sections are related. You will be generating keys and variables that are need to configure each component (the backend and the Github App), thus, you will need to go back and forth.
 
