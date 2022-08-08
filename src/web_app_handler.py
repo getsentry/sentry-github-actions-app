@@ -6,6 +6,8 @@ import logging
 import os
 from typing import NamedTuple
 
+from src.sentry_config import fetch_dsn_for_github_org
+
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
 
@@ -38,9 +40,15 @@ class WebAppHandler:
                 with GithubAppToken(
                     **self.config.gh_app._asdict()
                 ).get_token() as token:
+                    # "url": "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
+                    org = data["workflow_job"]["url"]
+                    import pdb
+
+                    pdb.set()
+                    dsn = fetch_dsn_for_github_org(org)
                     client = GithubClient(
                         token=token,
-                        dsn=self.config.sentry.dsn,
+                        dsn=dsn,
                         dry_run=self.dry_run,
                     )
                     client.send_trace(data["workflow_job"])
@@ -78,14 +86,9 @@ class GitHubConfig(NamedTuple):
     token: str | None
 
 
-class SentryConfig(NamedTuple):
-    dsn: str | None
-
-
 class Config(NamedTuple):
     gh_app: GithubAppConfig | None
     gh: GitHubConfig
-    sentry: SentryConfig
 
 
 def get_gh_app_private_key():
@@ -138,5 +141,4 @@ def init_config():
             token=os.environ.get("GH_TOKEN"),
             webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
         ),
-        SentryConfig(dsn=os.environ.get("SENTRY_GITHUB_DSN")),
     )
