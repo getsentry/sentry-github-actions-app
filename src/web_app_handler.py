@@ -37,15 +37,16 @@ class WebAppHandler:
 
             # e.g. "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
             org = data["workflow_job"]["url"].split("repos/")[1].split("/")[0]
-            # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-            dsn = os.environ.get("SENTRY_GITHUB_DSN", fetch_dsn_for_github_org(org))
 
             # We are executing in Github App mode
             if self.config.gh_app:
-
                 with GithubAppToken(
                     **self.config.gh_app._asdict()
                 ).get_token() as token:
+                    # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+                    dsn = os.environ.get(
+                        "SENTRY_GITHUB_DSN", fetch_dsn_for_github_org(org, token)
+                    )
                     client = GithubClient(
                         token=token,
                         dsn=dsn,
@@ -53,6 +54,11 @@ class WebAppHandler:
                     )
                     client.send_trace(data["workflow_job"])
             else:
+                # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+                dsn = os.environ.get(
+                    "SENTRY_GITHUB_DSN",
+                    fetch_dsn_for_github_org(org, self.config.gh.token),
+                )
                 client = GithubClient(
                     token=self.config.gh.token,
                     dsn=dsn,
