@@ -4,22 +4,12 @@ from configparser import ConfigParser
 
 import requests
 
-CACHE = {}
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
 
-# Remember the last 1000 orgs
-@lru_cache(maxsize=1000)
-def _org_dsn(org):
-    return CACHE[org]
-
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
-    if CACHE.get(org):
-        return _org_dsn(org)
-
-    print(f"The org {org} is not in the cache.")
     # Using the GH app token allows fetching the file in a private repo
     headers = {
         "Accept": "application/vnd.github+json",
@@ -41,7 +31,4 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
     # - Read ini file and assertions
     cp = ConfigParser()
     cp.read_string(file_contents)
-    dsn = cp.get("sentry-github-actions-app", "dsn")
-    # Store in the cache
-    CACHE[org] = dsn
-    return dsn
+    return cp.get("sentry-github-actions-app", "dsn")
