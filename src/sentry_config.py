@@ -3,10 +3,10 @@ from configparser import ConfigParser
 import requests
 
 SENTRY_CONFIG_API_URL = (
-    f"https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
+    "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
 SENTRY_CONFIG_RAW_URL = (
-    f"https://raw.githubusercontent.com/{owner}/.sentry/main/sentry_config.ini"
+    "https://raw.githubusercontent.com/{owner}/.sentry/main/sentry_config.ini"
 )
 
 
