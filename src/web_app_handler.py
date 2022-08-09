@@ -37,7 +37,8 @@ class WebAppHandler:
 
             # e.g. "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
             org = data["workflow_job"]["url"].split("repos/")[1].split("/")[0]
-            dsn = fetch_dsn_for_github_org(org)
+            # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+            dsn = os.environ.get("SENTRY_GITHUB_DSN", fetch_dsn_for_github_org(org))
 
             # We are executing in Github App mode
             if self.config.gh_app:
