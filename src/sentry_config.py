@@ -10,12 +10,19 @@ SENTRY_CONFIG_RAW_URL = (
 )
 
 
-def fetch_dsn_for_github_org(org: str) -> str:
+def fetch_dsn_for_github_org(org: str, token: str) -> str:
     cp = ConfigParser()
     api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
     # - Get meta about sentry_config.ini file
-    req = requests.get(api_url)
+    resp = requests.get(
+        f"https://api.github.com/repos/{org}/.sentry/contents/sentry_config.ini",
+        # Using the GH app token allows fetching the file in a private repo
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {token}",
+        },
+    )
     req.raise_for_status()
     resp = req.json()
 

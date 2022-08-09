@@ -42,7 +42,7 @@ Steps to follow:
 - Create a Sentry project to gather your Github CI data
   - You don't need to select a platform in the wizard or any alerts
   - Find the DSN key under the settings of the project you created
-- Create a public repo name `.sentry`
+- Create a private repo named `.sentry`
 - Create a file in that repo called `sentry_config.ini` with these contents (adjust your DSN value)
 
 ```ini
