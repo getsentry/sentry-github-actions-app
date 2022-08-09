@@ -64,20 +64,6 @@ def test_missing_workflow_job(monkeypatch):
     assert msg == "workflow_job"
 
 
-# "Set SENTRY_GITHUB_SDN in order to send envelopes."
-def test_no_dsn_is_set(monkeypatch):
-    monkeypatch.delenv("GH_APP_ID", raising=False)
-    handler = WebAppHandler()
-    # This tries to process a job that does not have the conclusion key
-    with pytest.raises(KeyError) as excinfo:
-        handler.handle_event(
-            data={"action": "completed", "workflow_job": {}},
-            headers={"X-GitHub-Event": "workflow_job"},
-        )
-    (msg,) = excinfo.value.args
-    assert msg == "conclusion"
-
-
 def test_valid_signature_no_secret(monkeypatch):
     monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
     handler = WebAppHandler()

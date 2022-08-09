@@ -1,6 +1,6 @@
 # Sentry Github Actions App
 
-**NOTE**: You can try this project but you will need to deploy your own ingestion app. If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+**NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
 This app allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
 
@@ -22,7 +22,6 @@ This screenshot shows the transaction view for an individual Github Action showi
 
 <img width="992" alt="image" src="https://user-images.githubusercontent.com/44410/175558737-7eca4036-73ce-4ed2-8b5a-51b5d882a814.png">
 
-
 ## Features
 
 Here's a list of benefits you will get if you use this project:
@@ -36,94 +35,28 @@ Here's a list of benefits you will get if you use this project:
   - For instance you can show: slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
   - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt
 
-
 ## Do you want to try this?
-
-**NOTE**: If we invested a bit more on this project we would reduce the following steps to just install this Github App and add this configuration file somewhere to be determined.
 
 Steps to follow:
 
-- Fork the app
-- Create a Docker build
-- Deploy the image to your provider
-  - If you don't use GCP you may need to make some changes to the code
-- Create a Github App and install it in all your repos
-  - Instructions are provided below
+- Create a Sentry project to gather your Github CI data
+  - You don't need to select a platform in the wizard or any alerts
+  - Find the DSN key under the settings of the project you created
+- Create a private repo named `.sentry`
+- Create a file in that repo called `sentry_config.ini` with these contents (adjust your DSN value)
 
-Please, give us some feedback in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+```ini
+[sentry-github-actions-app]
+; DSN value of the Sentry project you created in the
+dsn = https://foo@bar.ingest.sentry.io/foobar
+```
 
-## Code
+- Install this Github App for all your repos
+  - We only request workflow jobs and a single file permissions
 
-Code explanation:
+**NOTE**: In other words, we won't be able to access any of your code.
 
-- `github_sdk.py` has the generic logic to submit Github jobs as Sentry transactions. This module could be released separatedly.
-- `github_app.py` contains code to handle a Github App installation.
-- `web_app_handler.py`: Web app logic goes here.
-- `main.py` contains the code to respond to webhook events.
-
-## Set Up
-
-**NOTE**: Currently, this app is only used internally. See [milestone](https://github.com/getsentry/sentry-github-actions-app/milestone/1) for required work to support ingesting data from other orgs.
-
-These are the steps you will need to set up this backend and Github app for your organization.
-
-The steps of the next two sections are related. You will be generating keys and variables that are need to configure each component (the backend and the Github App), thus, you will need to go back and forth.
-
-### Sentry SaaS (or self-hosted Sentry)
-
-In Sentry.io:
-
-- Create a project to track errors of the backend itself (`APP_DSN` in section below)
-- Create a project to track Github jobs (`SENTRY_GITHUB_DSN` in section below)
-
-### Backend deployment
-
-- Deploy the app to a service (e.g. GCP) and make it publicly reachable
-  - Take note of the app's URL and use it when creating the Github app webhook
-
-Common environment variables:
-
-- `APP_DSN`: Report your deployment errors to Sentry
-- `GH_WEBHOOK_SECRET`: Secret shared between Github's webhook and your app
-  - Create a secret with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'` on your command line
-- `SENTRY_GITHUB_DSN`: Where to report your Github job transactions
-- `LOGGING_LEVEL` (optional): To set the verbosity of Python's logging (defaults to INFO)
-
-Github App specific variables:
-
-- `GH_APP_ID` - Github App ID
-  - When you create the Github App, you will see the value listed in the page
-- `GH_APP_INSTALLATION_ID` - Github App Installation ID
-  - Once you install the app under your Github org, you will see it listed as one of your organizations' integrations
-  - If you load the page, you will see the ID as part of the URL
-- `GH_APP_PRIVATE_KEY` - Private key
-  - When you load the Github App page, at the bottom of the page under "Private Keys" select "Generate a private key"
-  - A .pem file will be downloaded locally.
-  - Convert it into a single line value by using base64 (`base64 -i path_to_pem_file`)
-
-For local development, you need to make the App's webhook point to your ngrok set up. You should create a new private key (a .pem file that gets automatically downloaded when generated) for your local development and do not forget to delete the private key when you are done.
-
-### The Github App
-
-After creating the Github App for the first time there are some changes you need to make:
-
-- Configure the Webhook URL to point to the backend deployment
-- Set the Webhook Secret to be the same as the backend deployment
-- Set the following permissions for the app:
-  - Actions: Workflows, workflow runs and artifacts -> Read-only
-   - Specific events: [Workflow job](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#workflow_job)
-
-After completing the creation of the app you will need to make few more changes:
-
-- Click on `Generate a private key`
-  - Run `base64 -i <path_to_download_file>`
-  - Store the value in Google Secrets
-  - Delete the file just downloaded
-- Add to the deployment the variable `GH_APP_ID`
-- Select "Install App" and install the app on your Github org
-  - Grant access to "All Repositories"
-- Look at the URL of the installation and you will find the installation ID
-  - Add to the deployment the variable `GH_APP_INSTALLATION_ID`
+Give us feedback in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
 ## Local development
 

@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 from unittest.mock import patch
 
@@ -13,6 +14,11 @@ from src.github_sdk import GithubClient
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
 
+# Different versions of Python represent certain errors differently
+prepend = ""
+if sys.version_info[:2] >= (3, 10):
+    prepend = "GithubClient."
+
 
 def test_job_without_steps(skipped_workflow):
     sdk = GithubClient(dsn=DSN, token=TOKEN)
@@ -25,7 +31,7 @@ def test_initialize_without_setting_dsn():
     (msg,) = excinfo.value.args
     assert (
         msg
-        == "GithubClient.__init__() missing 2 required positional arguments: 'token' and 'dsn'"
+        == f"{prepend}__init__() missing 2 required positional arguments: 'token' and 'dsn'"
     )
 
 
@@ -33,9 +39,7 @@ def test_initialize_without_setting_token():
     with pytest.raises(TypeError) as excinfo:
         GithubClient(dsn=DSN)
     (msg,) = excinfo.value.args
-    assert (
-        msg == "GithubClient.__init__() missing 1 required positional argument: 'token'"
-    )
+    assert msg == f"{prepend}__init__() missing 1 required positional argument: 'token'"
 
 
 @responses.activate
