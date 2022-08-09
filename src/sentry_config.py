@@ -12,7 +12,7 @@ SENTRY_CONFIG_RAW_URL = (
 
 def fetch_dsn_for_github_org(org: str) -> str:
     cp = ConfigParser()
-    api_url = SENTRY_CONFIG_API_URL.replace("owner", org)
+    api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
     # - Get meta about sentry_config.ini file
     req = requests.get(api_url)

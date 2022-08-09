@@ -1,3 +1,4 @@
+from unittest import TestCase
 import responses
 
 from src.sentry_config import (
@@ -31,24 +32,27 @@ sentry_config_file_meta = {
 sentry_config_ini_file = f"[sentry-github-actions-app]\ndsn = {expected_dsn}"
 
 
-class TestSentryConfigCase:
-    def setUp(self):
-        self.api_url = api_url.replace("owner", "armenzg")
-        self.raw_url = raw_url.replace("owner", "armenzg")
+class TestSentryConfigCase(TestCase):
+    def setUp(self) -> None:
+        self.api_url = api_url.replace("{owner}", "armenzg")
+        self.raw_url = raw_url.replace("{owner}", "armenzg")
+        responses.add(
+            method="GET", url=self.api_url, json=sentry_config_file_meta, status=200
+        )
+        responses.add(
+            method="GET", url=self.raw_url, body=sentry_config_ini_file, status=200
+        )
+        return super().setUp()
 
     @responses.activate
-    def test_fetch_parse_sentry_config_file(self):
-        responses.get(self.api_url, json=sentry_config_file_meta, status=200)
-        responses.get(self.raw_url, body=sentry_config_ini_file, status=200)
+    def test_fetch_parse_sentry_config_file(self) -> None:
+        assert fetch_dsn_for_github_org("armenzg") == expected_dsn
 
-        dsn = fetch_dsn_for_github_org("armenzg")
-        assert dsn == expected_dsn
-
-    def test_fetch_private_repo(self):
+    def test_fetch_private_repo(self) -> None:
         pass
 
-    def test_file_missing(self):
+    def test_file_missing(self) -> None:
         pass
 
-    def test_bad_contents(self):
+    def test_bad_contents(self) -> None:
         pass
