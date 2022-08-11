@@ -98,6 +98,7 @@ Table of commands:
 | ---------------------------------- | ---------------------------------------------- |
 | flask run -p 5001                  | Start the Flask app on <http://localhost:5001> |
 | pre-commit install                 | Install pre-commit hooks                       |
+| tox                                | Run tests in isolated environment              |
 | pytest                             | Run Python tests                               |
 | pytest --cov=src --cov-report=html | Generate code coverage.                        |
 
