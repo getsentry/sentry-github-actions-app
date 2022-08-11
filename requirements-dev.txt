@@ -1,7 +1,8 @@
-pytest>=7.1.1
-python-dotenv>=0.20.0
 black>=22.3.0
-pre-commit>=2.18.1
-pytest-cov>=3.0.0
-responses>=0.20.0
 freezegun>=1.2.1
+pre-commit>=2.18.1
+pytest>=7.1.1
+pytest-cov>=3.0.0
+python-dotenv>=0.20.0
+responses>=0.20.0
+tox>=3.25.1
