@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 from unittest import TestCase
+
 import responses
 
-from src.sentry_config import (
-    SENTRY_CONFIG_API_URL as api_url,
-    fetch_dsn_for_github_org,
-)
+from src.sentry_config import fetch_dsn_for_github_org
+from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
 expected_dsn = (
     "https://73805ee0a679438d909bb0e6e05fb97f@o510822.ingest.sentry.io/6627507"
@@ -35,7 +36,10 @@ class TestSentryConfigCase(TestCase):
     def setUp(self) -> None:
         self.api_url = api_url.replace("{owner}", org)
         responses.add(
-            method="GET", url=self.api_url, json=sentry_config_file_meta, status=200
+            method="GET",
+            url=self.api_url,
+            json=sentry_config_file_meta,
+            status=200,
         )
         return super().setUp()
 

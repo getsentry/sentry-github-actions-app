@@ -1,5 +1,7 @@
-from unittest import mock
+from __future__ import annotations
+
 import json
+from unittest import mock
 
 import pytest
 
@@ -22,7 +24,8 @@ def test_invalid_github_event():
     handler = WebAppHandler()
     # This has an invalid X-GitHub-Event value
     reason, http_code = handler.handle_event(
-        data={}, headers={"X-GitHub-Event": "not_a_workflow_job"}
+        data={},
+        headers={"X-GitHub-Event": "not_a_workflow_job"},
     )
     assert reason == "Event not supported."
     assert http_code == 200

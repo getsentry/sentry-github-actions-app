@@ -6,10 +6,9 @@ import logging
 import os
 from typing import NamedTuple
 
-from src.sentry_config import fetch_dsn_for_github_org
-
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
+from src.sentry_config import fetch_dsn_for_github_org
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ class WebAppHandler:
             # We are executing in Github App mode
             if self.config.gh_app:
                 with GithubAppToken(
-                    **self.config.gh_app._asdict()
+                    **self.config.gh_app._asdict(),
                 ).get_token() as token:
                     # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
                     dsn = dsn_from_env or fetch_dsn_for_github_org(org, token)
@@ -109,7 +108,9 @@ def get_gh_app_private_key():
 
         logger.info(f"Grabbing secret from {uri}")
         private_key = base64.b64decode(
-            gcp_client.access_secret_version(name=uri).payload.data.decode("UTF-8")
+            gcp_client.access_secret_version(
+                name=uri,
+            ).payload.data.decode("UTF-8"),
         )
     else:
         # This block only applies for development since we are not executing on GCP
@@ -133,7 +134,7 @@ def init_config():
     except Exception as e:
         logger.exception(e)
         logger.warning(
-            "We have failed to load the private key, however, we will fallback to the PAT method."
+            "We have failed to load the private key, however, we will fallback to the PAT method.",
         )
 
     return Config(

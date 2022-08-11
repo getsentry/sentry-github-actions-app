@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import base64
-from functools import lru_cache
 from configparser import ConfigParser
+from functools import lru_cache
 
 import requests
 
