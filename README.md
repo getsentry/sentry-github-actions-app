@@ -1,5 +1,7 @@
 # Sentry Github Actions App
 
+[![codecov](https://codecov.io/gh/getsentry/sentry-github-actions-app/branch/main/graph/badge.svg?token=LVWHH6NYTF)](https://codecov.io/gh/getsentry/sentry-github-actions-app)
+
 **NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
 This app allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
@@ -96,6 +98,7 @@ Table of commands:
 | ---------------------------------- | ---------------------------------------------- |
 | flask run -p 5001                  | Start the Flask app on <http://localhost:5001> |
 | pre-commit install                 | Install pre-commit hooks                       |
+| tox                                | Run tests in isolated environment              |
 | pytest                             | Run Python tests                               |
 | pytest --cov=src --cov-report=html | Generate code coverage.                        |
 
