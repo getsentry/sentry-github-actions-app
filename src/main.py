@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import logging
 import os
 
 import sentry_sdk
-from flask import abort, jsonify, request, Flask
+from flask import abort
+from flask import Flask
+from flask import jsonify
+from flask import request
 from sentry_sdk import capture_exception
-
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 from .web_app_handler import WebAppHandler
