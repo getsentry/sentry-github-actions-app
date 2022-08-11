@@ -19,9 +19,6 @@ Github App specific variables:
 
 - `GH_APP_ID` - Github App ID
   - When you create the Github App, you will see the value listed in the page
-- `GH_APP_INSTALLATION_ID` - Github App Installation ID
-  - Once you install the app under your Github org, you will see it listed as one of your organizations' integrations
-  - If you load the page, you will see the ID as part of the URL
 - `GH_APP_PRIVATE_KEY` - Private key
   - When you load the Github App page, at the bottom of the page under "Private Keys" select "Generate a private key"
   - A .pem file will be downloaded locally.
@@ -52,5 +49,3 @@ After completing the creation of the app you will need to make few more changes:
 - Add to the deployment the variable `GH_APP_ID`
 - Select "Install App" and install the app on your Github org
   - Grant access to "All Repositories"
-- Look at the URL of the installation and you will find the installation ID
-  - Add to the deployment the variable `GH_APP_INSTALLATION_ID`

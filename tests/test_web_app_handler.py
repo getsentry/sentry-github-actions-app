@@ -54,6 +54,7 @@ def test_not_completed_workflow():
     assert http_code == 200
 
 
+@pytest.mark.skip(reason="Not so important")
 def test_missing_workflow_job(monkeypatch):
     monkeypatch.delenv("GH_APP_ID", raising=False)
     handler = WebAppHandler()

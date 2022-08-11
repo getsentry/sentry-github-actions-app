@@ -12,16 +12,15 @@ import requests
 
 
 class GithubAppToken:
-    def __init__(self, private_key, app_id, installation_id) -> None:
+    def __init__(self, private_key, app_id) -> None:
         self.headers = self.get_authentication_header(private_key, app_id)
-        self.installation_id = installation_id
 
     # From docs: Installation access tokens have the permissions
     # configured by the GitHub App and expire after one hour.
     @contextlib.contextmanager
-    def get_token(self) -> Generator[str, None, None]:
+    def get_token(self, installation_id: str) -> Generator[str, None, None]:
         req = requests.post(
-            url=f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
+            url=f"https://api.github.com/app/installations/{installation_id}/access_tokens",
             headers=self.headers,
         )
         req.raise_for_status()
