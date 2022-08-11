@@ -1,6 +1,8 @@
 """
 This module contains the logic to support running the app as a Github App
 """
+from __future__ import annotations
+
 import contextlib
 import time
 from typing import Generator

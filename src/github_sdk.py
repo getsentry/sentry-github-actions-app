@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gzip
 import io
 import logging
@@ -51,7 +53,8 @@ class GithubClient:
                 "job": job["html_url"],
             },
             "tags": {
-                "job_status": job["conclusion"],  # e.g. success, failure, skipped
+                # e.g. success, failure, skipped
+                "job_status": job["conclusion"],
                 "branch": runs["head_branch"],
                 "commit": runs["head_sha"],
                 "repo": repo,
@@ -112,7 +115,9 @@ class GithubClient:
             envelope.serialize_into(f)
 
         req = requests.post(
-            self.sentry_project_url, data=body.getvalue(), headers=headers
+            self.sentry_project_url,
+            data=body.getvalue(),
+            headers=headers,
         )
         req.raise_for_status()
         return req
@@ -121,7 +126,7 @@ class GithubClient:
         # This can happen when the workflow is skipped and there are no steps
         if job["conclusion"] == "skipped":
             logging.info(
-                f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}"
+                f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}",
             )
             return
         trace = self._generate_trace(job)
@@ -164,7 +169,7 @@ def _generate_spans(steps, parent_span_id, trace_id):
                     "start_timestamp": step["started_at"],
                     "timestamp": step["completed_at"],
                     "trace_id": trace_id,
-                }
+                },
             )
         except Exception as e:
             logging.exception(e)
