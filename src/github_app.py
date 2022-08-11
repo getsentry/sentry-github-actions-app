@@ -18,7 +18,7 @@ class GithubAppToken:
     # From docs: Installation access tokens have the permissions
     # configured by the GitHub App and expire after one hour.
     @contextlib.contextmanager
-    def get_token(self, installation_id: str) -> Generator[str, None, None]:
+    def get_token(self, installation_id: int) -> Generator[str, None, None]:
         req = requests.post(
             url=f"https://api.github.com/app/installations/{installation_id}/access_tokens",
             headers=self.headers,
