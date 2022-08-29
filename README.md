@@ -57,8 +57,8 @@ Steps to follow:
 dsn = https://foo@bar.ingest.sentry.io/foobar
 ```
 
-- Install this Github App for all your repos
-  - We only request workflow jobs and a single file permissions
+- Install [this Github App](https://github.com/apps/sentry-github-app-alpha) for all your repos
+  - We only request **workflow jobs** and a **single file** permissions
 
 **NOTE**: In other words, we won't be able to access any of your code.
 
