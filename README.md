@@ -2,9 +2,9 @@
 
 [![codecov](https://codecov.io/gh/getsentry/sentry-github-actions-app/branch/main/graph/badge.svg?token=LVWHH6NYTF)](https://codecov.io/gh/getsentry/sentry-github-actions-app)
 
-**NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+**NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46). You can try this app by following the steps in the "Try it out" section below.
 
-This app allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
+[This app](https://github.com/apps/sentry-github-app-alpha) allows your organization to instrument Github Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.
 
 It works by listening to Github workflow events via a webhook configured in a Github App. These events are then stored in Sentry as performance transactions. The best value for this project is when you have [Sentry's Discover](https://docs.sentry.io/product/discover-queries/) and [Dashboards](https://docs.sentry.io/product/dashboards/) in order to slice the data and answer the questions you care about. In a sense, this project turns Github's CI into an app which Sentry monitors, thus, you can use many of the features you're already familiar with.
 
@@ -37,7 +37,11 @@ Here's a list of benefits you will get if you use this project:
   - For instance you can show: slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
   - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt
 
-## Do you want to try this?
+Watch this video showing the features described above:
+
+https://user-images.githubusercontent.com/44410/187217254-ad7c2eba-f4d4-4a08-9733-54cf92f466ec.mp4
+
+## Try it out
 
 Steps to follow:
 
