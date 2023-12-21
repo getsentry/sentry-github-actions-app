@@ -7,7 +7,7 @@ import pytest
 
 from src.web_app_handler import WebAppHandler
 
-valid_signature = "ad21e4e6a981bd1656fcd56ed0039b9ab4f292a997517e26fe77aab63920a9ad"
+valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
 
 
 def test_invalid_header():

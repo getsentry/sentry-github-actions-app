@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import io
 import logging
 import uuid
@@ -17,6 +18,12 @@ class GithubSentryError(Exception):
 
 def get_uuid():
     return uuid.uuid4().hex
+
+
+def get_uuid_from_string(input_string):
+    hash_object = hashlib.sha256(input_string.encode())
+    hash_value = hash_object.hexdigest()
+    return uuid.UUID(hash_value[:32]).hex
 
 
 class GithubClient:
@@ -143,7 +150,16 @@ def _base_transaction(job):
         "contexts": {
             "trace": {
                 "span_id": get_uuid()[:16],
-                "trace_id": get_uuid(),
+                # This trace id is basically just a hash from run_id and run_attempt turned into a uuid. We use it to trace jobs within a workflow.
+                # `run_id` identifiess a particular workflow run and does not increment when rerunning jobs. This is why we also use `run_attempt` in the job.
+                # https://docs.github.com/en/actions/learn-github-actions/contexts
+                # https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
+                "trace_id": get_uuid_from_string(
+                    "run_id:"
+                    + str(job["run_id"])
+                    + "run_attempt:"
+                    + str(job["run_attempt"])
+                ),
                 "type": "trace",
             },
         },

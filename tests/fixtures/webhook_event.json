@@ -11,13 +11,14 @@
     "X-GitHub-Hook-Installation-Target-ID": 873328,
     "X-GitHub-Hook-Installation-Target-Type": "repository",
     "X-Hub-Signature": "sha1=aaaeb75e9ef80af1a95ffdf4b4b8b2a69ff8ff69",
-    "X-Hub-Signature-256": "sha256=b7b02a023839f2a85b164e5732b49b939d90f42558d1cd8386e188f20648b0e8"
+    "X-Hub-Signature-256": "sha256=d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
   },
   "payload": {
     "action": "completed",
     "workflow_job": {
       "id": 3283437728,
       "run_id": 1113865931,
+      "run_attempt": 2,
       "run_url": "https://api.github.com/repos/armenzg/sentry-hackweek/actions/runs/1113865931",
       "node_id": "MDg6Q2hlY2tSdW4zMjgzNDM3NzI4",
       "head_sha": "2238b40c4b398874db76239c1d60325af9037563",
