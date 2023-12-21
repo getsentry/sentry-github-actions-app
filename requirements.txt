@@ -1,4 +1,4 @@
-flask==2.0.3
+flask==2.3.3
 google-cloud-secret-manager==2.11.0
 PyJWT[crypto]==2.4.0
 requests==2.27.1
