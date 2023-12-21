@@ -1,17 +1,17 @@
 # Build stage
-FROM python:3.10 AS builder
+FROM python:3.11 AS builder
 RUN pip install -U pip setuptools wheel
 # Copy files
-COPY requirements.txt /project/
+COPY requirements.frozen.txt /project/
 WORKDIR /project
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.frozen.txt
 
 # Execution stage
-FROM python:3.10
+FROM python:3.11
 WORKDIR /app
 COPY src/ /project/src
 # Retrieve packages from build stage
-COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
 RUN pip install gunicorn==20.1.0
 # Source code
 COPY src/ /app/src/
