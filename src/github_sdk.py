@@ -74,6 +74,12 @@ class GithubClient:
             pr_number = runs["pull_requests"][0]["number"]
             meta["data"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
             meta["tags"]["pull_request"] = pr_number
+        if job["conclusion"] == "failure":
+            failing_steps = [
+                step for step in job["steps"] if step["conclusion"] == "failure"
+            ]
+            if len(failing_steps) > 0:
+                meta["tags"]["failing_step"] = failing_steps[0]["name"]
 
         return meta
 
