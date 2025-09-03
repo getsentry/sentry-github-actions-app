@@ -53,3 +53,21 @@ def uuid_list():
 def webhook_event():
     with open("tests/fixtures/webhook_event.json") as f:
         return json.load(f)
+
+
+@pytest.fixture
+def failure_job():
+    with open("tests/fixtures/failedJob/job.json") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def failure_runs():
+    with open("tests/fixtures/failedJob/runs.json") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def failure_workflow():
+    with open("tests/fixtures/failedJob/workflow.json") as f:
+        return json.load(f)
