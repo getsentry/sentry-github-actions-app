@@ -87,9 +87,7 @@ def test_trace_generation(
     assert "failing_step" not in trace["tags"]
 
 
-@freeze_time()
 @responses.activate
-@patch("src.github_sdk.get_uuid")
 def test_trace_generation_with_failing_steps(
     mock_get_uuid,
     failure_job,
