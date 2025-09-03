@@ -89,14 +89,10 @@ def test_trace_generation(
 
 @responses.activate
 def test_trace_generation_with_failing_steps(
-    mock_get_uuid,
     failure_job,
     failure_runs,
     failure_workflow,
-    uuid_list,
 ):
-    mock_get_uuid.side_effect = uuid_list
-
     responses.get(
         failure_job["run_url"],
         json=failure_runs,
