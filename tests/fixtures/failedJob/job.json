@@ -1,0 +1,106 @@
+{
+  "check_run_url": "https://api.github.com/repos/getsentry/ken-test-repo/check-runs/48858869248",
+  "completed_at": "2025-08-25T22:04:10Z",
+  "conclusion": "failure",
+  "created_at": "2025-08-25T22:03:57Z",
+  "head_branch": "initial_branch",
+  "head_sha": "ff29d0c21125f2743a09308fe086002d10667728",
+  "html_url": "https://github.com/getsentry/ken-test-repo/actions/runs/17217309463/job/48858869248",
+  "id": 48858869248,
+  "labels": ["ubuntu-latest"],
+  "name": "test",
+  "node_id": "CR_kwDOPkC4Ds8AAAALYDcuAA",
+  "run_attempt": 3,
+  "run_id": 17217309463,
+  "run_url": "https://api.github.com/repos/getsentry/ken-test-repo/actions/runs/17217309463",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions",
+  "runner_id": 1003040048,
+  "runner_name": "GitHub Actions 1003040048",
+  "started_at": "2025-08-25T22:04:00Z",
+  "status": "completed",
+  "steps": [
+    {
+      "completed_at": "2025-08-25T22:04:02Z",
+      "conclusion": "success",
+      "name": "Set up job",
+      "number": 1,
+      "started_at": "2025-08-25T22:04:01Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:03Z",
+      "conclusion": "success",
+      "name": "Checkout code",
+      "number": 2,
+      "started_at": "2025-08-25T22:04:02Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:03Z",
+      "conclusion": "success",
+      "name": "Set up Python",
+      "number": 3,
+      "started_at": "2025-08-25T22:04:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:07Z",
+      "conclusion": "success",
+      "name": "Install dependencies",
+      "number": 4,
+      "started_at": "2025-08-25T22:04:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:07Z",
+      "conclusion": "failure",
+      "name": "Run calculate tests",
+      "number": 5,
+      "started_at": "2025-08-25T22:04:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:07Z",
+      "conclusion": "skipped",
+      "name": "Run copywriting tests",
+      "number": 6,
+      "started_at": "2025-08-25T22:04:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:07Z",
+      "conclusion": "skipped",
+      "name": "Run all tests",
+      "number": 7,
+      "started_at": "2025-08-25T22:04:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:07Z",
+      "conclusion": "skipped",
+      "name": "Post Set up Python",
+      "number": 13,
+      "started_at": "2025-08-25T22:04:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:08Z",
+      "conclusion": "success",
+      "name": "Post Checkout code",
+      "number": 14,
+      "started_at": "2025-08-25T22:04:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2025-08-25T22:04:08Z",
+      "conclusion": "success",
+      "name": "Complete job",
+      "number": 15,
+      "started_at": "2025-08-25T22:04:08Z",
+      "status": "completed"
+    }
+  ],
+  "url": "https://api.github.com/repos/getsentry/ken-test-repo/actions/jobs/48858869248",
+  "workflow_name": "Run Tests"
+}

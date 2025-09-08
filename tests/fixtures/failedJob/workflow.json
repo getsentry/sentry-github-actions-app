@@ -1,0 +1,12 @@
+{
+  "id": 48858869248,
+  "node_id": "CR_kwDOPkC4Ds8AAAALYDcuAA",
+  "name": "test",
+  "path": ".github/workflows/test.yml",
+  "state": "active",
+  "created_at": "2025-08-25T22:03:57Z",
+  "updated_at": "2025-08-25T22:03:57Z",
+  "url": "https://api.github.com/repos/getsentry/ken-test-repo/actions/workflows/48858869248",
+  "html_url": "https://github.com/getsentry/ken-test-repo/actions/workflows/test.yml",
+  "badge_url": "https://github.com/getsentry/ken-test-repo/workflows/test/badge.svg"
+}

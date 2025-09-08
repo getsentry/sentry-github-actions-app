@@ -80,7 +80,33 @@ def test_trace_generation(
         json=jobA_workflow,
     )
     client = GithubClient(dsn=DSN, token=TOKEN)
-    assert client._generate_trace(jobA_job) == jobA_trace
+    trace = client._generate_trace(jobA_job)
+    assert trace == jobA_trace
+
+    # make sure there is no failing step for passing runs
+    assert "failing_step" not in trace["tags"]
+
+
+@responses.activate
+def test_trace_generation_with_failing_steps(
+    failure_job,
+    failure_runs,
+    failure_workflow,
+):
+    responses.get(
+        failure_job["run_url"],
+        json=failure_runs,
+    )
+    responses.get(
+        failure_runs["workflow_url"],
+        json=failure_workflow,
+    )
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    trace = client._generate_trace(failure_job)
+
+    # make sure the failing step exists
+    assert trace["tags"]["failing_step"] == "Run calculate tests"
 
 
 @freeze_time()
