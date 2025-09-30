@@ -136,15 +136,12 @@ class GithubClient:
         return req
 
     def send_trace(self, job):
-        # This can happen when the workflow is skipped and there are no steps
-        if job["conclusion"] == "skipped":
-            logging.info(
-                f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}",
-            )
-            return
-        trace = self._generate_trace(job)
-        if trace:
-            return self._send_envelope(trace)
+        # DISABLED: Individual job traces are now handled by WorkflowTracer
+        # This prevents the old individual job transaction structure from appearing in Sentry
+        logging.info(
+            f"DISABLED: Individual job trace for '{job['name']}' - now handled by WorkflowTracer"
+        )
+        return None
 
 
 def _base_transaction(job):
