@@ -67,27 +67,32 @@ class WorkflowJobCollector:
     
     def _process_workflow_immediately(self, run_id: int):
         """Process workflow immediately when we have enough jobs"""
-        with self._lock:
-            # Skip if already processed
-            if run_id in self.processed_workflows:
-                logger.info(f"Workflow run {run_id} already processed, skipping")
-                return
+        try:
+            with self._lock:
+                # Skip if already processed
+                if run_id in self.processed_workflows:
+                    logger.info(f"Workflow run {run_id} already processed, skipping")
+                    return
+                    
+                jobs = self.workflow_jobs[run_id]
                 
-            jobs = self.workflow_jobs[run_id]
-            
-            if not jobs:
-                logger.warning(f"No jobs found for workflow run {run_id}")
-                return
+                if not jobs:
+                    logger.warning(f"No jobs found for workflow run {run_id}")
+                    return
+                    
+                logger.info(f"Processing workflow run {run_id} immediately with {len(jobs)} jobs")
                 
-            logger.info(f"Processing workflow run {run_id} immediately with {len(jobs)} jobs")
-            
-            # Check if all jobs are complete
-            all_completed = all(job.get("conclusion") is not None for job in jobs)
-            if all_completed:
-                logger.info(f"All jobs complete for workflow run {run_id}, sending trace")
-                self._send_workflow_trace(run_id)
-            else:
-                logger.info(f"Not all jobs complete for workflow run {run_id}, skipping")
+                # Check if all jobs are complete
+                all_completed = all(job.get("conclusion") is not None for job in jobs)
+                if all_completed:
+                    logger.info(f"All jobs complete for workflow run {run_id}, sending trace")
+                    self._send_workflow_trace(run_id)
+                else:
+                    logger.info(f"Not all jobs complete for workflow run {run_id}, skipping")
+        except Exception as e:
+            logger.error(f"Error processing workflow run {run_id} immediately: {e}", exc_info=True)
+            # Ensure cleanup happens even if there's an exception
+            self._cleanup_workflow_run(run_id)
     
     def _process_workflow_delayed(self, run_id: int):
         """Process workflow after delay to allow all jobs to arrive"""
@@ -196,6 +201,26 @@ class WorkflowJobCollector:
             if run_id in self.job_arrival_times:
                 del self.job_arrival_times[run_id]
     
+    def _cleanup_workflow_run(self, run_id: int):
+        """Clean up workflow run data to prevent resource leaks"""
+        try:
+            with self._lock:
+                # Mark as processed to prevent reprocessing
+                self.processed_workflows.add(run_id)
+                
+                # Clean up workflow data
+                if run_id in self.workflow_jobs:
+                    del self.workflow_jobs[run_id]
+                if run_id in self.workflow_timers:
+                    self.workflow_timers[run_id].cancel()
+                    del self.workflow_timers[run_id]
+                if run_id in self.job_arrival_times:
+                    del self.job_arrival_times[run_id]
+                    
+                logger.info(f"Cleaned up workflow run {run_id} after exception")
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup of workflow run {run_id}: {cleanup_error}", exc_info=True)
+
     def _send_individual_traces(self, jobs: List[Dict[str, Any]]):
         """DISABLED: Individual job traces are now handled by WorkflowTracer"""
         logger.info(f"DISABLED: Individual traces for {len(jobs)} jobs - now handled by WorkflowTracer")
