@@ -15,10 +15,16 @@ from .web_app_handler import WebAppHandler
 
 APP_DSN = os.environ.get("APP_DSN")
 if APP_DSN:
-    # COMPLETELY DISABLED: No Sentry integration for Flask app
-    # We only want our custom workflow transactions, not Flask request transactions
-    # sentry_sdk.init() is commented out to prevent ANY automatic transactions
-    pass
+    # This tracks errors and performance of the app itself rather than GH workflows
+    sentry_sdk.init(
+        dsn=APP_DSN,
+        integrations=[FlaskIntegration()],
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0,
+        environment=os.environ.get("FLASK_ENV", "production"),
+    )
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 # Set the logging level for all loggers (e.g. requests)
