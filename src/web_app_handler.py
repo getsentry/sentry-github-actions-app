@@ -31,6 +31,7 @@ class WorkflowJobCollector:
         self.processed_jobs = set()  # Track processed job IDs to avoid duplicates
         self.workflow_timers = {}  # run_id -> timer for delayed processing
         self.processed_workflows = set()  # Track processed workflow runs to avoid duplicates
+        self.job_arrival_times = defaultdict(list)  # run_id -> list of arrival timestamps
         self._lock = threading.Lock()  # Thread lock for preventing race conditions
         
     def add_job(self, job_data: Dict[str, Any]):
@@ -47,18 +48,22 @@ class WorkflowJobCollector:
             self.processed_jobs.add(job_id)
             self.workflow_jobs[run_id].append(job)
             
+            # Track job arrival time for smart detection
+            self.job_arrival_times[run_id].append(time.time())
+            
             logger.info(f"Added job {job['name']} (ID: {job_id}) to workflow run {run_id}")
             
-            # Check if we have enough jobs to process the workflow
-            # For testing, we'll wait for 5 jobs (the expected number in our test workflow)
-            if len(self.workflow_jobs[run_id]) >= 5 and run_id not in self.processed_workflows:
-                logger.info(f"Workflow run {run_id} has {len(self.workflow_jobs[run_id])} jobs, setting timer to process in 2 seconds")
-                # Set a short timer to allow all jobs to arrive
-                timer = threading.Timer(2.0, self._process_workflow_immediately, args=[run_id])
-                self.workflow_timers[run_id] = timer
-                timer.start()
-            else:
-                logger.info(f"Workflow run {run_id} has {len(self.workflow_jobs[run_id])} jobs, waiting for more")
+            # Smart workflow completion detection
+            jobs_count = len(self.workflow_jobs[run_id])
+            if run_id not in self.processed_workflows:
+                if self._should_process_workflow(run_id, jobs_count):
+                    logger.info(f"Workflow run {run_id} has {jobs_count} jobs, setting timer to process in 2 seconds")
+                    # Set a short timer to allow all jobs to arrive
+                    timer = threading.Timer(2.0, self._process_workflow_immediately, args=[run_id])
+                    self.workflow_timers[run_id] = timer
+                    timer.start()
+                else:
+                    logger.info(f"Workflow run {run_id} has {jobs_count} jobs, waiting for more")
     
     def _process_workflow_immediately(self, run_id: int):
         """Process workflow immediately when we have enough jobs"""
@@ -112,28 +117,45 @@ class WorkflowJobCollector:
                     self.workflow_timers[run_id].cancel()
                     del self.workflow_timers[run_id]
     
-    def _is_workflow_complete(self, run_id: int, current_job: Dict[str, Any]) -> bool:
-        """Check if all jobs in the workflow are complete"""
+    def _should_process_workflow(self, run_id: int, jobs_count: int) -> bool:
+        """Smart detection of when to process workflow based on job patterns and timing"""
+        
         jobs = self.workflow_jobs[run_id]
+        arrival_times = self.job_arrival_times[run_id]
         
-        # For webhook testing, wait for multiple jobs to complete
-        # Based on the logs, we expect around 6-7 jobs per workflow
-        expected_jobs = 6  # Adjust based on actual workflow structure
+        # All jobs must be completed
+        all_completed = all(job.get("conclusion") is not None for job in jobs)
+        if not all_completed:
+            return False
         
-        if len(jobs) >= expected_jobs:
-            all_completed = all(job.get("conclusion") is not None for job in jobs)
-            if all_completed:
-                logger.info(f"Workflow run {run_id} appears complete with {len(jobs)} jobs")
-                return True
-        elif len(jobs) >= 1:
-            # For testing, also trigger if we have at least 1 job and it's been a while
-            # This handles cases where not all jobs arrive
-            all_completed = all(job.get("conclusion") is not None for job in jobs)
-            if all_completed:
-                logger.info(f"Workflow run {run_id} appears complete with {len(jobs)} jobs (partial)")
+        # Smart thresholds based on job count patterns
+        if jobs_count >= 10:
+            # Large workflows (10+ jobs) - process immediately when all complete
+            return True
+        elif jobs_count >= 5:
+            # Medium workflows (5-9 jobs) - process when all complete
+            return True
+        elif jobs_count >= 3:
+            # Small workflows (3-4 jobs) - process when all complete
+            return True
+        elif jobs_count >= 1:
+            # Single or few jobs - check if enough time has passed since last arrival
+            if len(arrival_times) >= 1:
+                time_since_last_job = time.time() - arrival_times[-1]
+                # If no new jobs for 3 seconds, process what we have
+                if time_since_last_job > 3.0:
+                    return True
+            
+            # For single jobs, process immediately
+            if jobs_count == 1:
                 return True
         
         return False
+    
+    def _is_workflow_complete(self, run_id: int, current_job: Dict[str, Any]) -> bool:
+        """Check if all jobs in the workflow are complete (legacy method)"""
+        jobs_count = len(self.workflow_jobs[run_id])
+        return self._should_process_workflow(run_id, jobs_count)
     
     def _send_workflow_trace(self, run_id: int):
         """Send workflow-level trace for all jobs in the run"""
@@ -171,6 +193,8 @@ class WorkflowJobCollector:
             if run_id in self.workflow_timers:
                 self.workflow_timers[run_id].cancel()
                 del self.workflow_timers[run_id]
+            if run_id in self.job_arrival_times:
+                del self.job_arrival_times[run_id]
     
     def _send_individual_traces(self, jobs: List[Dict[str, Any]]):
         """DISABLED: Individual job traces are now handled by WorkflowTracer"""
