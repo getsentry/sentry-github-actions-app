@@ -4,243 +4,81 @@ import base64
 import hmac
 import logging
 import os
-import time
-import threading
-from typing import NamedTuple, Dict, List, Any
-from collections import defaultdict
+from typing import NamedTuple
 
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
-from .workflow_tracer import WorkflowTracer
 from .sentry_config import fetch_dsn_for_github_org
+from .workflow_job_collector import WorkflowJobCollector
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
 
-class WorkflowJobCollector:
-    """Collects jobs from a workflow run and sends workflow-level transactions"""
-    
-    def __init__(self, dsn: str, token: str, dry_run: bool = False):
-        self.dsn = dsn
-        self.token = token
-        self.dry_run = dry_run
-        self.workflow_jobs = defaultdict(list)  # run_id -> list of jobs
-        self.workflow_tracer = WorkflowTracer(token, dsn, dry_run)
-        self.processed_jobs = set()  # Track processed job IDs to avoid duplicates
-        self.workflow_timers = {}  # run_id -> timer for delayed processing
-        self.processed_workflows = set()  # Track processed workflow runs to avoid duplicates
-        self.job_arrival_times = defaultdict(list)  # run_id -> list of arrival timestamps
-        self._lock = threading.Lock()  # Thread lock for preventing race conditions
-        
-    def add_job(self, job_data: Dict[str, Any]):
-        """Add a job to the collector"""
-        job = job_data["workflow_job"]
-        run_id = job["run_id"]
-        job_id = job["id"]
-        
-        with self._lock:
-            # Skip if we've already processed this job
-            if job_id in self.processed_jobs:
-                return
-                
-            self.processed_jobs.add(job_id)
-            self.workflow_jobs[run_id].append(job)
-            
-            # Track job arrival time for smart detection
-            self.job_arrival_times[run_id].append(time.time())
-            
-            logger.info(f"Added job {job['name']} (ID: {job_id}) to workflow run {run_id}")
-            
-            # Smart workflow completion detection
-            jobs_count = len(self.workflow_jobs[run_id])
-            if run_id not in self.processed_workflows:
-                if self._should_process_workflow(run_id, jobs_count):
-                    logger.info(f"Workflow run {run_id} has {jobs_count} jobs, setting timer to process in 2 seconds")
-                    # Set a short timer to allow all jobs to arrive
-                    timer = threading.Timer(2.0, self._process_workflow_immediately, args=[run_id])
-                    self.workflow_timers[run_id] = timer
-                    timer.start()
-                else:
-                    logger.info(f"Workflow run {run_id} has {jobs_count} jobs, waiting for more")
-    
-    def _process_workflow_immediately(self, run_id: int):
-        """Process workflow immediately when we have enough jobs"""
-        try:
-            with self._lock:
-                # Skip if already processed
-                if run_id in self.processed_workflows:
-                    logger.info(f"Workflow run {run_id} already processed, skipping")
-                    return
-                    
-                jobs = self.workflow_jobs[run_id]
-                
-                if not jobs:
-                    logger.warning(f"No jobs found for workflow run {run_id}")
-                    return
-                    
-                logger.info(f"Processing workflow run {run_id} immediately with {len(jobs)} jobs")
-                
-                # Check if all jobs are complete
-                all_completed = all(job.get("conclusion") is not None for job in jobs)
-                if all_completed:
-                    logger.info(f"All jobs complete for workflow run {run_id}, sending trace")
-                    self._send_workflow_trace(run_id)
-                else:
-                    logger.info(f"Not all jobs complete for workflow run {run_id}, skipping")
-        except Exception as e:
-            logger.error(f"Error processing workflow run {run_id} immediately: {e}", exc_info=True)
-            # Ensure cleanup happens even if there's an exception
-            self._cleanup_workflow_run(run_id)
-    
-    def _process_workflow_delayed(self, run_id: int):
-        """Process workflow after delay to allow all jobs to arrive"""
-        with self._lock:
-            # Skip if already processed
-            if run_id in self.processed_workflows:
-                logger.info(f"Workflow run {run_id} already processed, skipping")
-                return
-                
-            jobs = self.workflow_jobs[run_id]
-            
-            if not jobs:
-                logger.warning(f"No jobs found for workflow run {run_id}")
-                return
-                
-            logger.info(f"Processing delayed workflow run {run_id} with {len(jobs)} jobs")
-            
-            # Check if all jobs are complete
-            all_completed = all(job.get("conclusion") is not None for job in jobs)
-            if all_completed:
-                logger.info(f"All jobs complete for workflow run {run_id}, sending trace")
-                self._send_workflow_trace(run_id)
-            else:
-                logger.info(f"Not all jobs complete for workflow run {run_id}, skipping")
-                # Clean up timer if not all jobs are complete
-                if run_id in self.workflow_timers:
-                    self.workflow_timers[run_id].cancel()
-                    del self.workflow_timers[run_id]
-    
-    def _should_process_workflow(self, run_id: int, jobs_count: int) -> bool:
-        """Smart detection of when to process workflow based on job patterns and timing"""
-        
-        jobs = self.workflow_jobs[run_id]
-        arrival_times = self.job_arrival_times[run_id]
-        
-        # All jobs must be completed
-        all_completed = all(job.get("conclusion") is not None for job in jobs)
-        if not all_completed:
-            return False
-        
-        # Smart thresholds based on job count patterns
-        if jobs_count >= 10:
-            # Large workflows (10+ jobs) - process immediately when all complete
-            return True
-        elif jobs_count >= 5:
-            # Medium workflows (5-9 jobs) - process when all complete
-            return True
-        elif jobs_count >= 3:
-            # Small workflows (3-4 jobs) - process when all complete
-            return True
-        elif jobs_count >= 1:
-            # Single or few jobs - check if enough time has passed since last arrival
-            if len(arrival_times) >= 1:
-                time_since_last_job = time.time() - arrival_times[-1]
-                # If no new jobs for 3 seconds, process what we have
-                if time_since_last_job > 3.0:
-                    return True
-            
-            # For single jobs, process immediately
-            if jobs_count == 1:
-                return True
-        
-        return False
-    
-    def _is_workflow_complete(self, run_id: int, current_job: Dict[str, Any]) -> bool:
-        """Check if all jobs in the workflow are complete (legacy method)"""
-        jobs_count = len(self.workflow_jobs[run_id])
-        return self._should_process_workflow(run_id, jobs_count)
-    
-    def _send_workflow_trace(self, run_id: int):
-        """Send workflow-level trace for all jobs in the run"""
-        # Check if already processed to prevent duplicates
-        if run_id in self.processed_workflows:
-            logger.warning(f"Workflow run {run_id} already processed, skipping to prevent duplicates")
-            return
-            
-        jobs = self.workflow_jobs[run_id]
-        
-        if not jobs:
-            logger.warning(f"No jobs found for workflow run {run_id}")
-            return
-            
-        logger.info(f"Sending workflow trace for run {run_id} with {len(jobs)} jobs")
-        
-        try:
-            # Use the first job as the base for workflow metadata
-            base_job = jobs[0]
-            
-            # Send workflow trace
-            self.workflow_tracer.send_workflow_trace(base_job, jobs)
-            
-            logger.info(f"Successfully sent workflow trace for run {run_id}")
-            
-        except Exception as e:
-            logger.error(f"Failed to send workflow trace for run {run_id}: {e}", exc_info=True)
-            # DISABLED FALLBACK: Don't send individual traces to prevent duplicates
-            logger.warning(f"Workflow trace failed, but NOT falling back to individual traces to prevent duplicates")
-        finally:
-            # Mark workflow as processed and clean up IMMEDIATELY
-            self.processed_workflows.add(run_id)
-            if run_id in self.workflow_jobs:
-                del self.workflow_jobs[run_id]
-            if run_id in self.workflow_timers:
-                self.workflow_timers[run_id].cancel()
-                del self.workflow_timers[run_id]
-            if run_id in self.job_arrival_times:
-                del self.job_arrival_times[run_id]
-    
-    def _cleanup_workflow_run(self, run_id: int):
-        """Clean up workflow run data to prevent resource leaks"""
-        try:
-            with self._lock:
-                # Mark as processed to prevent reprocessing
-                self.processed_workflows.add(run_id)
-                
-                # Clean up workflow data
-                if run_id in self.workflow_jobs:
-                    del self.workflow_jobs[run_id]
-                if run_id in self.workflow_timers:
-                    self.workflow_timers[run_id].cancel()
-                    del self.workflow_timers[run_id]
-                if run_id in self.job_arrival_times:
-                    del self.job_arrival_times[run_id]
-                    
-                logger.info(f"Cleaned up workflow run {run_id} after exception")
-        except Exception as cleanup_error:
-            logger.error(f"Error during cleanup of workflow run {run_id}: {cleanup_error}", exc_info=True)
-
-    def _send_individual_traces(self, jobs: List[Dict[str, Any]]):
-        """DISABLED: Individual job traces are now handled by WorkflowTracer"""
-        logger.info(f"DISABLED: Individual traces for {len(jobs)} jobs - now handled by WorkflowTracer")
-        return
-
-
 class WebAppHandler:
+    """
+    Handles GitHub webhook events for workflow job completion.
+    
+    Supports both hierarchical workflow tracing (new) and individual job tracing (legacy).
+    The mode is controlled by the ENABLE_HIERARCHICAL_TRACING environment variable.
+    """
+    
     def __init__(self, dry_run=False):
+        """
+        Initialize the WebAppHandler.
+        
+        Args:
+            dry_run: If True, simulates operations without sending traces
+        """
         self.config = init_config()
         self.dry_run = dry_run
         self.job_collectors = {}  # org -> WorkflowJobCollector
         
     def _get_job_collector(self, org: str, token: str, dsn: str) -> WorkflowJobCollector:
-        """Get or create a job collector for the organization"""
+        """
+        Get or create a job collector for the organization.
+        
+        Args:
+            org: GitHub organization name
+            token: GitHub API token
+            dsn: Sentry DSN for trace submission
+            
+        Returns:
+            WorkflowJobCollector instance for the organization
+        """
         if org not in self.job_collectors:
             self.job_collectors[org] = WorkflowJobCollector(dsn, token, self.dry_run)
         return self.job_collectors[org]
 
+    def _send_legacy_trace(self, data: dict, org: str, token: str, dsn: str) -> None:
+        """
+        Send individual job trace (legacy behavior).
+        
+        Args:
+            data: GitHub webhook job payload
+            org: GitHub organization name
+            token: GitHub API token
+            dsn: Sentry DSN for trace submission
+        """
+        logger.info(f"Using legacy individual job tracing for org '{org}'")
+        github_client = GithubClient(token, dsn, self.dry_run)
+        github_client.send_trace(data)
+
     def handle_event(self, data, headers):
-        # We return 200 to make webhook not turn red since everything got processed well
+        """
+        Handle GitHub webhook events.
+        
+        Supports both hierarchical workflow tracing (new) and individual job tracing (legacy).
+        The mode is determined by feature flags and organization settings.
+        
+        Args:
+            data: GitHub webhook payload
+            headers: HTTP headers from the webhook request
+            
+        Returns:
+            Tuple of (reason, http_code)
+        """
         http_code = 200
         reason = "OK"
 
@@ -249,7 +87,6 @@ class WebAppHandler:
         elif data["action"] != "completed":
             reason = "We cannot do anything with this workflow state."
         else:
-            # For now, this simplifies testing
             if self.dry_run:
                 return reason, http_code
 
@@ -264,14 +101,18 @@ class WebAppHandler:
                 http_code = 500
             else:
                 # For webhook testing, we'll use a mock token and avoid GitHub API calls
-                # The workflow tracer will extract data from the job payload instead
                 token = "webhook_testing_token"
                 
-                # Get job collector for this org
+                # Get job collector and check if hierarchical tracing is enabled
                 collector = self._get_job_collector(org, token, dsn)
                 
-                # Add job to collector (will send workflow trace when complete)
-                collector.add_job(data)
+                if collector.is_hierarchical_tracing_enabled(org):
+                    # Use new hierarchical workflow tracing
+                    logger.debug(f"Using hierarchical workflow tracing for org '{org}'")
+                    collector.add_job(data)
+                else:
+                    # Fall back to legacy individual job tracing
+                    self._send_legacy_trace(data, org, token, dsn)
 
         return reason, http_code
 
