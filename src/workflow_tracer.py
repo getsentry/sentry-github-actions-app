@@ -36,7 +36,7 @@ def get_uuid_from_string(input_string):
 class WorkflowTracer:
     """Enhanced tracer that creates workflow-level transactions"""
     
-    def __init__(self, token: str, dsn: str, dry_run: bool = False):
+    def __init__(self, token: Optional[str], dsn: str, dry_run: bool = False):
         self.token = token
         self.dsn = dsn
         self.dry_run = dry_run
@@ -69,45 +69,89 @@ class WorkflowTracer:
         req.raise_for_status()
         return req
     
-    def _get_workflow_run_data(self, job: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_workflow_run_data(self, job: Dict[str, Any], repository_info: Dict[str, Any] = None) -> Dict[str, Any]:
         """Get workflow run data, with caching"""
         run_id = job["run_id"]
         
         if run_id not in self.workflow_cache:
-            # Extract data from job payload for webhook testing
+            # Extract repository info from webhook payload or use defaults
+            repo_full_name = "unknown/unknown"
+            if repository_info:
+                repo_full_name = repository_info.get("full_name", repo_full_name)
+            elif "repository" in job:
+                repo_full_name = job["repository"].get("full_name", repo_full_name)
+            
+            # Extract workflow info from job or use defaults
+            workflow_name = job.get("workflow_name") or job.get("name", "Unknown Workflow")
+            workflow_path = job.get("workflow_path", ".github/workflows/workflow.yml")
+            
+            # Extract commit author info if available
+            author_name = "GitHub Actions"
+            author_email = "actions@github.com"
+            if "head_commit" in job and "author" in job.get("head_commit", {}):
+                author_name = job["head_commit"]["author"].get("name", author_name)
+                author_email = job["head_commit"]["author"].get("email", author_email)
+            
+            # Fetch workflow run details from GitHub API to get created_at and updated_at
+            workflow_run_created_at = None
+            workflow_run_updated_at = None
+            if self.token and repo_full_name != "unknown/unknown":
+                try:
+                    # GitHub API endpoint: GET /repos/{owner}/{repo}/actions/runs/{run_id}
+                    api_url = f"https://api.github.com/repos/{repo_full_name}/actions/runs/{run_id}"
+                    headers = {"Authorization": f"token {self.token}"}
+                    
+                    logging.debug(f"Fetching workflow run details for run {run_id} from GitHub API")
+                    response = self._fetch_github(api_url)
+                    run_data = response.json()
+                    
+                    workflow_run_created_at = run_data.get("created_at")
+                    workflow_run_updated_at = run_data.get("updated_at")
+                    
+                    if workflow_run_created_at and workflow_run_updated_at:
+                        logging.debug(
+                            f"Fetched workflow run timestamps: created_at={workflow_run_created_at}, "
+                            f"updated_at={workflow_run_updated_at}"
+                        )
+                    else:
+                        logging.warning(
+                            f"Workflow run API response missing timestamps for run {run_id}, "
+                            "will fall back to job timestamps"
+                        )
+                except Exception as e:
+                    logging.warning(
+                        f"Failed to fetch workflow run details for run {run_id}: {e}. "
+                        "Will fall back to job timestamps."
+                    )
+            
             self.workflow_cache[run_id] = {
                 "runs": {
                     "head_commit": {
-                        "author": {"name": "GitHub Actions", "email": "actions@github.com"}
+                        "author": {"name": author_name, "email": author_email}
                     },
                     "head_branch": job.get("head_branch", "main"),
                     "head_sha": job.get("head_sha", "unknown"),
                     "run_attempt": job.get("run_attempt", 1),
-                    "html_url": f"https://github.com/sergio-playground/sentry-gh-actions-test/actions/runs/{run_id}",
-                    "repository": {"full_name": "sergio-playground/sentry-gh-actions-test"}
+                    "html_url": f"https://github.com/{repo_full_name}/actions/runs/{run_id}",
+                    "repository": {"full_name": repo_full_name},
+                    "created_at": workflow_run_created_at,
+                    "updated_at": workflow_run_updated_at
                 },
                 "workflow": {
-                    "name": job.get("workflow_name", "Multi-Job Test"),
-                    "path": ".github/workflows/multi-job-test.yml"
+                    "name": workflow_name,
+                    "path": workflow_path
                 },
-                "repo": "sergio-playground/sentry-gh-actions-test"
+                "repo": repo_full_name
             }
         
         return self.workflow_cache[run_id]
     
-    def _create_workflow_transaction(self, job: Dict[str, Any], all_jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _create_workflow_transaction(self, job: Dict[str, Any], all_jobs: List[Dict[str, Any]], repository_info: Dict[str, Any] = None) -> Dict[str, Any]:
         """Create a single workflow transaction with job spans"""
-        workflow_data = self._get_workflow_run_data(job)
+        workflow_data = self._get_workflow_run_data(job, repository_info)
         runs = workflow_data["runs"]
         workflow = workflow_data["workflow"]
         repo = workflow_data["repo"]
-        
-        # Calculate workflow start and end times
-        job_start_times = [datetime.fromisoformat(j["started_at"].replace("Z", "+00:00")) for j in all_jobs if j.get("started_at")]
-        job_end_times = [datetime.fromisoformat(j["completed_at"].replace("Z", "+00:00")) for j in all_jobs if j.get("completed_at")]
-        
-        workflow_start = min(job_start_times) if job_start_times else datetime.utcnow()
-        workflow_end = max(job_end_times) if job_end_times else datetime.utcnow()
         
         # Determine overall workflow status
         job_conclusions = [j.get("conclusion") for j in all_jobs]
@@ -120,17 +164,81 @@ class WorkflowTracer:
         else:
             workflow_status = "ok"
         
-        # Create workflow transaction
+        # Prepare data and tags similar to github_sdk.py structure
+        workflow_data_dict = {
+            "workflow_url": runs["html_url"],
+        }
+        workflow_tags = {
+            "branch": runs["head_branch"],
+            "commit": runs["head_sha"],
+            "repo": repo,
+            "run_attempt": runs["run_attempt"],
+            "workflow": workflow["path"].rsplit("/")[-1],
+        }
+        
+        # Add PR info if available
+        if runs.get("pull_requests"):
+            pr_number = runs["pull_requests"][0]["number"]
+            workflow_data_dict["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
+            workflow_tags["pull_request"] = pr_number
+        
+        # Re-fetch workflow run data to get the final updated_at timestamp
+        # This ensures we have the most up-to-date completion time
+        workflow_run_created_at = runs.get("created_at")
+        workflow_run_updated_at = runs.get("updated_at")
+        
+        # Re-fetch workflow run details right before sending to get final updated_at
+        repo_full_name = repo
+        if self.token and repo_full_name != "unknown/unknown" and job.get("run_id"):
+            try:
+                run_id = job["run_id"]
+                api_url = f"https://api.github.com/repos/{repo_full_name}/actions/runs/{run_id}"
+                logging.debug(f"Re-fetching workflow run details for run {run_id} to get final updated_at")
+                response = self._fetch_github(api_url)
+                run_data = response.json()
+                
+                # Update with the latest timestamps
+                workflow_run_created_at = run_data.get("created_at")
+                workflow_run_updated_at = run_data.get("updated_at")
+                
+                # Update cache with latest data
+                if run_id in self.workflow_cache:
+                    self.workflow_cache[run_id]["runs"]["created_at"] = workflow_run_created_at
+                    self.workflow_cache[run_id]["runs"]["updated_at"] = workflow_run_updated_at
+                
+                logging.debug(
+                    f"Re-fetched workflow run timestamps: created_at={workflow_run_created_at}, "
+                    f"updated_at={workflow_run_updated_at}"
+                )
+            except Exception as e:
+                logging.warning(
+                    f"Failed to re-fetch workflow run details for run {job.get('run_id')}: {e}. "
+                    "Using cached timestamps."
+                )
+        
+        # Calculate workflow timestamps - prefer workflow run created_at/updated_at to match GitHub's duration
+        # Fall back to job timestamps if workflow run timestamps are not available
+        if workflow_run_created_at and workflow_run_updated_at:
+            # Use workflow run timestamps (matches GitHub's duration calculation)
+            workflow_start_str = workflow_run_created_at
+            workflow_end_str = workflow_run_updated_at
+            logging.debug(
+                f"Using workflow run timestamps: {workflow_start_str} -> {workflow_end_str} "
+                f"(matches GitHub's duration calculation)"
+            )
+        else:
+            # Fall back to job timestamps (earliest job start to latest job end)
+            workflow_start_str = min([j["started_at"] for j in all_jobs if j.get("started_at")], default=all_jobs[0]["started_at"])
+            workflow_end_str = max([j["completed_at"] for j in all_jobs if j.get("completed_at")], default=all_jobs[0]["completed_at"])
+            logging.debug(
+                f"Using job timestamps (fallback): {workflow_start_str} -> {workflow_end_str}"
+            )
+        
+        # Create workflow transaction matching github_sdk.py structure
         workflow_transaction = {
+            "event_id": get_uuid(),
             "type": "transaction",
-            "transaction": f"workflow: {workflow['name']}",  # Use "transaction" not "transaction_name"
-            "platform": "python",
-            "environment": "production",
-            "release": runs.get("head_sha", "main")[:8],
-            "sdk": {
-                "name": "gha-sentry-workflow",
-                "version": "0.0.1"
-            },
+            "transaction": f"workflow: {workflow['name']}",
             "contexts": {
                 "trace": {
                     "span_id": get_uuid()[:16],
@@ -138,95 +246,103 @@ class WorkflowTracer:
                         f"workflow_run_id:{job['run_id']}_run_attempt:{job['run_attempt']}"
                     ),
                     "type": "trace",
-                    "op": "workflow",
-                    "description": f"GitHub Actions workflow: {workflow['name']}",
-                    "status": workflow_status
-                },
-                "runtime": {
-                    "name": "python",
-                    "version": "3.8.0"
+                    "op": f"workflow: {workflow['name']}",
+                    "description": f"workflow: {workflow['name']}",
+                    "status": workflow_status,
+                    "data": workflow_data_dict
                 }
             },
             "user": runs["head_commit"]["author"],
-            "start_timestamp": workflow_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "timestamp": workflow_end.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "level": "info",
-            "logger": "workflow_tracer",
-            "tags": {
-                "workflow_name": workflow["name"],
-                "workflow_status": workflow_status,
-                "branch": runs["head_branch"],
-                "commit": runs["head_sha"],
-                "repo": repo,
-                "run_attempt": runs["run_attempt"],
-                "total_jobs": len(all_jobs),
-                "successful_jobs": len([j for j in all_jobs if j.get("conclusion") == "success"]),
-                "failed_jobs": len([j for j in all_jobs if j.get("conclusion") == "failure"]),
-                "cancelled_jobs": len([j for j in all_jobs if j.get("conclusion") == "cancelled"]),
-                "skipped_jobs": len([j for j in all_jobs if j.get("conclusion") == "skipped"]),
-                "trace_version": "v3.6"
-            },
-            "extra": {
-                "workflow_url": runs["html_url"],
-                "workflow_file": workflow["path"],
-                "total_duration": (workflow_end - workflow_start).total_seconds()
-            },
+            "start_timestamp": workflow_start_str,
+            "timestamp": workflow_end_str,
+            "tags": workflow_tags,
             "spans": []
         }
         
-        # Add PR info if available
-        if runs.get("pull_requests"):
-            pr_number = runs["pull_requests"][0]["number"]
-            workflow_transaction["extra"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
-            workflow_transaction["tags"]["pull_request"] = pr_number
+        # Calculate cleanup/teardown time (delta between last job completion and workflow updated_at)
+        cleanup_duration_seconds = 0
+        if workflow_run_created_at and workflow_run_updated_at:
+            # Find the latest job completion time
+            latest_job_completion = max([j["completed_at"] for j in all_jobs if j.get("completed_at")], default=None)
+            if latest_job_completion:
+                try:
+                    from datetime import datetime
+                    latest_job_dt = datetime.fromisoformat(latest_job_completion.replace("Z", "+00:00"))
+                    workflow_end_dt = datetime.fromisoformat(workflow_run_updated_at.replace("Z", "+00:00"))
+                    cleanup_duration_seconds = (workflow_end_dt - latest_job_dt).total_seconds()
+                    
+                    if cleanup_duration_seconds > 0:
+                        logging.debug(
+                            f"Cleanup/teardown time: {cleanup_duration_seconds:.1f}s "
+                            f"(between last job completion and workflow completion)"
+                        )
+                except Exception as e:
+                    logging.warning(f"Failed to calculate cleanup duration: {e}")
         
         # Add job spans to the workflow transaction
         workflow_span_id = workflow_transaction["contexts"]["trace"]["span_id"]
         workflow_trace_id = workflow_transaction["contexts"]["trace"]["trace_id"]
         
         for job_data in all_jobs:
-            # Create job span
+            # Create job span matching github_sdk.py format
             job_span = {
-                "op": "job",
-                "description": job_data["name"],
+                "op": job_data["name"],
+                "name": job_data["name"],
                 "parent_span_id": workflow_span_id,
                 "span_id": get_uuid()[:16],
-                "start_timestamp": datetime.fromisoformat(job_data["started_at"].replace("Z", "+00:00")).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "end_timestamp": datetime.fromisoformat(job_data["completed_at"].replace("Z", "+00:00")).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "start_timestamp": job_data["started_at"],
+                "timestamp": job_data["completed_at"],
                 "trace_id": workflow_trace_id,
-                "status": "ok" if job_data["conclusion"] in ["success", "skipped"] else "internal_error",
-                "data": {
-                    "job_url": job_data["html_url"],
-                    "job_status": job_data["conclusion"],
-                    "job_name": job_data["name"],
-                    "job_id": job_data["id"]
-                }
             }
             workflow_transaction["spans"].append(job_span)
             
-            # Add step spans as children of job span
+            # Add step spans as children of job span, matching github_sdk.py format
             for step in job_data.get("steps", []):
-                step_span = {
-                    "op": "step",
-                    "description": step["name"],
-                    "parent_span_id": job_span["span_id"],
-                    "span_id": get_uuid()[:16],
-                    "start_timestamp": datetime.fromisoformat(step["started_at"].replace("Z", "+00:00")).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "end_timestamp": datetime.fromisoformat(step["completed_at"].replace("Z", "+00:00")).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "trace_id": workflow_trace_id,
-                    "status": "ok" if step["conclusion"] == "success" else "internal_error",
-                    "data": {
-                        "step_name": step["name"],
-                        "step_number": step["number"],
-                        "step_conclusion": step["conclusion"]
+                try:
+                    step_span = {
+                        "op": step["name"],
+                        "name": step["name"],
+                        "parent_span_id": job_span["span_id"],
+                        "span_id": get_uuid()[:16],
+                        "start_timestamp": step["started_at"],
+                        "timestamp": step["completed_at"],
+                        "trace_id": workflow_trace_id,
                     }
-                }
-                workflow_transaction["spans"].append(step_span)
+                    workflow_transaction["spans"].append(step_span)
+                except Exception as e:
+                    logging.exception(e)
+        
+        # Add cleanup/teardown span if there's a delta between last job and workflow completion
+        if cleanup_duration_seconds > 0:
+            # Find the latest job completion timestamp to start cleanup span from
+            latest_job_completion = max([j["completed_at"] for j in all_jobs if j.get("completed_at")], default=None)
+            if latest_job_completion:
+                try:
+                    from datetime import datetime, timedelta
+                    cleanup_start_dt = datetime.fromisoformat(latest_job_completion.replace("Z", "+00:00"))
+                    cleanup_end_dt = cleanup_start_dt + timedelta(seconds=cleanup_duration_seconds)
+                    
+                    cleanup_span = {
+                        "op": "workflow.cleanup",
+                        "name": "Workflow cleanup and teardown",
+                        "parent_span_id": workflow_span_id,
+                        "span_id": get_uuid()[:16],
+                        "start_timestamp": cleanup_start_dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                        "timestamp": cleanup_end_dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                        "trace_id": workflow_trace_id,
+                    }
+                    workflow_transaction["spans"].append(cleanup_span)
+                    logging.debug(
+                        f"Added cleanup span: {cleanup_duration_seconds:.1f}s "
+                        f"({cleanup_start_dt.strftime('%H:%M:%S')} -> {cleanup_end_dt.strftime('%H:%M:%S')})"
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to create cleanup span: {e}")
         
         return workflow_transaction
     
     
-    def send_workflow_trace(self, job: Dict[str, Any], all_jobs: List[Dict[str, Any]] = None):
+    def send_workflow_trace(self, job: Dict[str, Any], all_jobs: List[Dict[str, Any]] = None, repository_info: Dict[str, Any] = None):
         """Send a single workflow transaction with all job and step spans"""
         if self.dry_run:
             logging.info(f"Dry run: Would send workflow trace for {job['name']}")
@@ -240,7 +356,7 @@ class WorkflowTracer:
             logging.info(f"Job names: {[j['name'] for j in all_jobs]}")
             
             # Create single workflow transaction with all spans
-            workflow_transaction = self._create_workflow_transaction(job, all_jobs)
+            workflow_transaction = self._create_workflow_transaction(job, all_jobs, repository_info)
             workflow_trace_id = workflow_transaction["contexts"]["trace"]["trace_id"]
             
             # Log detailed transaction info
@@ -248,7 +364,7 @@ class WorkflowTracer:
             logging.info(f"  - Trace ID: {workflow_trace_id}")
             logging.info(f"  - Transaction name: {workflow_transaction['transaction']}")
             logging.info(f"  - Total spans: {len(workflow_transaction['spans'])}")
-            logging.info(f"  - Trace version: {workflow_transaction['tags']['trace_version']}")
+            logging.info(f"  - Trace version: {workflow_transaction.get('tags', {}).get('trace_version', 'N/A')}")
             logging.info(f"  - Workflow status: {workflow_transaction['contexts']['trace']['status']}")
             
             # Log span details
@@ -273,7 +389,6 @@ class WorkflowTracer:
             return
         
         # Save transaction payload for Postman testing
-        import json
         trace_id = transaction.get('contexts', {}).get('trace', {}).get('trace_id', 'unknown')
         filename = f"transaction_payload_{trace_id}.json"
         
@@ -291,14 +406,11 @@ class WorkflowTracer:
         logging.info(f"Transaction type: {transaction.get('type')}")
         logging.info(f"Transaction name: {transaction.get('transaction')}")
         logging.info(f"Trace ID: {transaction.get('contexts', {}).get('trace', {}).get('trace_id')}")
+        logging.info(f"Event ID: {transaction.get('event_id')}")
         
-        # Create a copy of the transaction without event_id for sending to Sentry
-        transaction_for_sentry = transaction.copy()
-        if 'event_id' in transaction_for_sentry:
-            del transaction_for_sentry['event_id']
-        
+        # Send transaction as-is (event_id is included, matching github_sdk.py)
         envelope = Envelope()
-        envelope.add_transaction(transaction_for_sentry)
+        envelope.add_transaction(transaction)
         now = datetime.utcnow()
         
         headers = {
@@ -320,12 +432,23 @@ class WorkflowTracer:
         
         logging.info(f"Envelope size: {len(body.getvalue())} bytes")
         
-        req = requests.post(
-            self.sentry_project_url,
-            data=body.getvalue(),
-            headers=headers,
-        )
-        
-        logging.info(f"Sentry response: {req.status_code} - {req.text}")
-        req.raise_for_status()
-        return req
+        try:
+            req = requests.post(
+                self.sentry_project_url,
+                data=body.getvalue(),
+                headers=headers,
+            )
+            
+            logging.info(f"✅ Sentry response: {req.status_code}")
+            if req.status_code != 200:
+                logging.error(f"❌ Sentry rejected transaction: {req.status_code} - {req.text[:500]}")
+            else:
+                logging.info(f"✅ Transaction successfully sent to Sentry")
+            
+            req.raise_for_status()
+            return req
+        except requests.exceptions.RequestException as e:
+            logging.error(f"❌ Failed to send transaction to Sentry: {e}")
+            logging.error(f"   URL: {self.sentry_project_url}")
+            logging.error(f"   Trace ID: {trace_id}")
+            raise
