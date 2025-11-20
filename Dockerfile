@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.11 AS builder
+FROM python:3.11-slim AS builder
 RUN pip install -U pip setuptools wheel
 # Copy files
 COPY requirements.frozen.txt /project/
@@ -7,7 +7,7 @@ WORKDIR /project
 RUN pip install --no-cache-dir -r requirements.frozen.txt
 
 # Execution stage
-FROM python:3.11
+FROM python:3.11-slim
 WORKDIR /app
 COPY src/ /project/src
 # Retrieve packages from build stage
