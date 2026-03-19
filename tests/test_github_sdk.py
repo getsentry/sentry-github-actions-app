@@ -107,6 +107,7 @@ def test_trace_generation_with_failing_steps(
 
     # make sure the failing step exists
     assert trace["tags"]["failing_step"] == "Run calculate tests"
+    assert trace["tags"]["event"] == "push"
 
 
 @freeze_time()
@@ -146,7 +147,7 @@ def test_send_trace(
         "Content-Type": "application/x-sentry-envelope",
         "Content-Encoding": "gzip",
         "X-Sentry-Auth": f"Sentry sentry_key=foo,sentry_client=gha-sentry/0.0.1,sentry_timestamp={now},sentry_version=7",
-        "Content-Length": "693",
+        "Content-Length": "700",
     }
 
     for k, v in resp.request.headers.items():
