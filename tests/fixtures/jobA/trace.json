@@ -59,6 +59,7 @@
     "job_status": "success",
     "pull_request": 33347,
     "repo": "getsentry/sentry",
+    "event": "pull_request",
     "run_attempt": 1,
     "workflow": "acceptance.yml"
   },

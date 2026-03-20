@@ -66,6 +66,7 @@ class GithubClient:
                 "commit": runs["head_sha"],
                 "repo": repo,
                 "run_attempt": runs["run_attempt"],  # Rerunning a job
+                "event": runs["event"],
                 # It allows querying jobs within the same workflow (e.g. foo.yml)
                 "workflow": workflow["path"].rsplit("/")[-1],
             },
