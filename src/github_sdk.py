@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import io
 import logging
+import time
 import uuid
 from datetime import datetime
 
@@ -29,6 +30,9 @@ def get_uuid_from_string(input_string):
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
+    github_api_timeout_seconds = 10
+    github_api_max_retries = 3
+    github_api_retry_backoff_seconds = 1
 
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
@@ -41,10 +45,27 @@ class GithubClient:
 
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
-
-        req = requests.get(url, headers=headers)
-        req.raise_for_status()
-        return req
+        for attempt in range(1, self.github_api_max_retries + 1):
+            try:
+                req = requests.get(
+                    url,
+                    headers=headers,
+                    timeout=self.github_api_timeout_seconds,
+                )
+                req.raise_for_status()
+                return req
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                if attempt == self.github_api_max_retries:
+                    raise
+                sleep_seconds = self.github_api_retry_backoff_seconds * (2 ** (attempt - 1))
+                logging.warning(
+                    "Transient GitHub API request failed for %s on attempt %s/%s. Retrying in %s seconds.",
+                    url,
+                    attempt,
+                    self.github_api_max_retries,
+                    sleep_seconds,
+                )
+                time.sleep(sleep_seconds)
 
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
