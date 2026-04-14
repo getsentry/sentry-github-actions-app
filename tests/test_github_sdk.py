@@ -59,6 +59,43 @@ def test_ensure_raise_error_on_github_api_failure():
     )
 
 
+@responses.activate
+@patch("src.github_sdk.time.sleep")
+def test_fetch_github_retries_transient_errors_and_succeeds(mock_sleep):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+    responses.get(url, json={"status": "ok"}, status=200)
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    resp = client._fetch_github(url)
+
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+    assert len(responses.calls) == 3
+    assert mock_sleep.call_count == 2
+    assert mock_sleep.call_args_list[0].args == (1,)
+    assert mock_sleep.call_args_list[1].args == (2,)
+
+
+@responses.activate
+@patch("src.github_sdk.time.sleep")
+def test_fetch_github_raises_after_retry_exhaustion(mock_sleep):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    with pytest.raises(requests.exceptions.ConnectionError):
+        client._fetch_github(url)
+
+    assert len(responses.calls) == 3
+    assert mock_sleep.call_count == 2
+    assert mock_sleep.call_args_list[0].args == (1,)
+    assert mock_sleep.call_args_list[1].args == (2,)
+
+
 @freeze_time()
 @responses.activate
 @patch("src.github_sdk.get_uuid")
