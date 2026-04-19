@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
@@ -57,6 +58,37 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+@patch("src.github_sdk.requests.get")
+def test_fetch_github_sets_timeout(mock_get):
+    mock_response = mock.Mock()
+    mock_get.return_value = mock_response
+
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    response = client._fetch_github(url)
+
+    assert response == mock_response
+    mock_get.assert_called_once_with(
+        url,
+        headers={"Authorization": f"token {TOKEN}"},
+        timeout=GithubClient.github_api_timeout_seconds,
+    )
+
+
+def test_send_trace_handles_timeout_during_metadata_fetch(jobA_job):
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    with patch.object(
+        client,
+        "_generate_trace",
+        side_effect=requests.exceptions.Timeout("timed out"),
+    ) as mock_generate_trace:
+        with patch.object(client, "_send_envelope") as mock_send_envelope:
+            assert client.send_trace(jobA_job) is None
+
+    mock_generate_trace.assert_called_once_with(jobA_job)
+    mock_send_envelope.assert_not_called()
 
 
 @freeze_time()
