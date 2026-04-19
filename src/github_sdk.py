@@ -29,6 +29,7 @@ def get_uuid_from_string(input_string):
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
+    github_api_timeout_seconds = 10
 
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
@@ -42,7 +43,11 @@ class GithubClient:
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
 
-        req = requests.get(url, headers=headers)
+        req = requests.get(
+            url,
+            headers=headers,
+            timeout=self.github_api_timeout_seconds,
+        )
         req.raise_for_status()
         return req
 
@@ -143,7 +148,17 @@ class GithubClient:
                 f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}",
             )
             return
-        trace = self._generate_trace(job)
+        try:
+            trace = self._generate_trace(job)
+        except requests.exceptions.Timeout as error:
+            # Timeouts while reading GH metadata are usually transient.
+            # Dropping this single trace avoids failing the whole webhook call.
+            logging.warning(
+                "Skipping trace generation after GitHub API timeout for run %s: %s",
+                job.get("run_id", "unknown"),
+                error,
+            )
+            return
         if trace:
             return self._send_envelope(trace)
 
