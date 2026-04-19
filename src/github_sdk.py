@@ -16,6 +16,15 @@ class GithubSentryError(Exception):
     pass
 
 
+def _repo_from_run_url(run_url):
+    try:
+        parts = run_url.split("/")
+        repos_index = parts.index("repos")
+        return f"{parts[repos_index + 1]}/{parts[repos_index + 2]}"
+    except (AttributeError, ValueError, IndexError):
+        return None
+
+
 def get_uuid():
     return uuid.uuid4().hex
 
@@ -46,41 +55,80 @@ class GithubClient:
         req.raise_for_status()
         return req
 
+    def _default_metadata(self, job):
+        tags = {
+            # e.g. success, failure, skipped
+            "job_status": job["conclusion"],
+            "commit": job.get("head_sha"),
+            "run_attempt": job["run_attempt"],  # Rerunning a job
+        }
+        repo = _repo_from_run_url(job.get("run_url"))
+        if repo:
+            tags["repo"] = repo
+        return {
+            "author": {},
+            "data": {"job": job["html_url"]},
+            "tags": tags,
+        }
+
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
-        runs = self._fetch_github(job["run_url"]).json()
-        workflow = self._fetch_github(runs["workflow_url"]).json()
-        repo = runs["repository"]["full_name"]
-        meta = {
-            # "workflow_name": workflow["name"],
-            "author": runs["head_commit"]["author"],
-            # https://getsentry.atlassian.net/browse/TET-22
-            # Tags are not linkified externally, plain text data can be selected in browsers and opened
-            "data": {
-                "job": job["html_url"],
+        meta = self._default_metadata(job)
+        try:
+            runs = self._fetch_github(job["run_url"]).json()
+        except requests.RequestException as error:
+            logging.warning(
+                "Failed to fetch GitHub run metadata for %s. Sending minimal trace metadata.",
+                job.get("run_url"),
+                exc_info=error,
+            )
+            return meta
+
+        meta["author"] = runs.get("head_commit", {}).get("author", {})
+        meta["tags"].update(
+            {
+                "branch": runs.get("head_branch"),
+                "commit": runs.get("head_sha", meta["tags"].get("commit")),
+                "run_attempt": runs.get("run_attempt", meta["tags"]["run_attempt"]),
+                "event": runs.get("event"),
             },
-            "tags": {
-                # e.g. success, failure, skipped
-                "job_status": job["conclusion"],
-                "branch": runs["head_branch"],
-                "commit": runs["head_sha"],
-                "repo": repo,
-                "run_attempt": runs["run_attempt"],  # Rerunning a job
-                "event": runs["event"],
+        )
+        repo = runs.get("repository", {}).get("full_name")
+        if repo:
+            meta["tags"]["repo"] = repo
+
+        workflow_url = runs.get("workflow_url")
+        if workflow_url:
+            try:
+                workflow = self._fetch_github(workflow_url).json()
+            except requests.RequestException as error:
+                logging.warning(
+                    "Failed to fetch GitHub workflow metadata for %s. Continuing without workflow tag.",
+                    workflow_url,
+                    exc_info=error,
+                )
+            else:
+                workflow_path = workflow.get("path")
                 # It allows querying jobs within the same workflow (e.g. foo.yml)
-                "workflow": workflow["path"].rsplit("/")[-1],
-            },
-        }
-        if runs.get("pull_requests"):
-            pr_number = runs["pull_requests"][0]["number"]
-            meta["data"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
-            meta["tags"]["pull_request"] = pr_number
+                if workflow_path:
+                    meta["tags"]["workflow"] = workflow_path.rsplit("/")[-1]
+
+        pull_requests = runs.get("pull_requests") or []
+        if pull_requests:
+            pr_number = pull_requests[0].get("number")
+            if pr_number:
+                repo = meta["tags"].get("repo")
+                if repo:
+                    meta["data"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
+                meta["tags"]["pull_request"] = pr_number
         if job["conclusion"] == "failure":
             failing_steps = [
-                step for step in job["steps"] if step["conclusion"] == "failure"
+                step for step in job.get("steps", []) if step.get("conclusion") == "failure"
             ]
             if len(failing_steps) > 0:
-                meta["tags"]["failing_step"] = failing_steps[0]["name"]
+                meta["tags"]["failing_step"] = failing_steps[0].get("name")
+
+        meta["tags"] = {key: value for key, value in meta["tags"].items() if value is not None}
 
         return meta
 
