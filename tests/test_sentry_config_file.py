@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from unittest import TestCase
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import responses
 
+from src import sentry_config
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -46,6 +49,21 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    def test_fetch_uses_configured_timeout(self) -> None:
+        mocked_response = Mock()
+        mocked_response.json.return_value = sentry_config_file_meta
+        mocked_response.raise_for_status.return_value = None
+        with patch("src.sentry_config.requests.get", return_value=mocked_response) as get:
+            assert fetch_dsn_for_github_org(org, token) == expected_dsn
+            get.assert_called_once_with(
+                self.api_url,
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"token {token}",
+                },
+                timeout=sentry_config.GH_API_TIMEOUT_SECONDS,
+            )
 
     def test_fetch_private_repo(self) -> None:
         pass

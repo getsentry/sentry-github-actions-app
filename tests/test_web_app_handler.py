@@ -4,6 +4,7 @@ import json
 from unittest import mock
 
 import pytest
+import requests
 
 from src.web_app_handler import WebAppHandler
 
@@ -107,4 +108,21 @@ def test_handle_event_with_secret(monkeypatch, webhook_event):
         headers=webhook_event["headers"],
     )
     assert reason == "OK"
+    assert http_code == 200
+
+
+def test_handle_event_tolerates_github_timeout(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_TOKEN", "fake_pat")
+    monkeypatch.delenv("GH_APP_ID", raising=False)
+    handler = WebAppHandler()
+
+    with mock.patch(
+        "src.web_app_handler.fetch_dsn_for_github_org",
+        side_effect=requests.exceptions.Timeout(),
+    ):
+        reason, http_code = handler.handle_event(
+            data=webhook_event["payload"],
+            headers=webhook_event["headers"],
+        )
+    assert reason == "Timed out while contacting GitHub APIs."
     assert http_code == 200

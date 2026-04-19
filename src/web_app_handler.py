@@ -6,6 +6,8 @@ import logging
 import os
 from typing import NamedTuple
 
+import requests
+
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
 from src.sentry_config import fetch_dsn_for_github_org
@@ -37,28 +39,35 @@ class WebAppHandler:
             installation_id = data["installation"]["id"]
             org = data["repository"]["owner"]["login"]
 
-            # We are executing in Github App mode
-            if self.config.gh_app:
-                with GithubAppToken(**self.config.gh_app._asdict()).get_token(
-                    installation_id
-                ) as token:
+            try:
+                # We are executing in Github App mode
+                if self.config.gh_app:
+                    with GithubAppToken(**self.config.gh_app._asdict()).get_token(
+                        installation_id
+                    ) as token:
+                        # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+                        dsn = fetch_dsn_for_github_org(org, token)
+                        client = GithubClient(
+                            token=token,
+                            dsn=dsn,
+                            dry_run=self.dry_run,
+                        )
+                        client.send_trace(data["workflow_job"])
+                else:
                     # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                    dsn = fetch_dsn_for_github_org(org, token)
+                    dsn = fetch_dsn_for_github_org(org, self.config.gh.token)
                     client = GithubClient(
-                        token=token,
+                        token=self.config.gh.token,
                         dsn=dsn,
                         dry_run=self.dry_run,
                     )
                     client.send_trace(data["workflow_job"])
-            else:
-                # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                dsn = fetch_dsn_for_github_org(org, token)
-                client = GithubClient(
-                    token=self.config.gh.token,
-                    dsn=dsn,
-                    dry_run=self.dry_run,
+            except requests.exceptions.Timeout as e:
+                logger.warning(
+                    f"Timed out while contacting GitHub APIs for org '{org}'. Skipping trace forwarding.",
+                    exc_info=e,
                 )
-                client.send_trace(data["workflow_job"])
+                reason = "Timed out while contacting GitHub APIs."
 
         return reason, http_code
 
