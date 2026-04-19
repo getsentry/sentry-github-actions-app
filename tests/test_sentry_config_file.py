@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from unittest import TestCase
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import responses
+import requests
 
+from src.sentry_config import GITHUB_API_MAX_ATTEMPTS
+from src.sentry_config import GITHUB_API_TIMEOUT_SECONDS
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -46,6 +51,41 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    def test_fetch_retries_ssl_errors_then_succeeds(self) -> None:
+        ok_response = Mock()
+        ok_response.raise_for_status.return_value = None
+        ok_response.json.return_value = sentry_config_file_meta
+
+        with patch(
+            "src.sentry_config.requests.get",
+            side_effect=[requests.exceptions.SSLError("tls eof"), ok_response],
+        ) as request_get:
+            assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+        assert request_get.call_count == 2
+        _, kwargs = request_get.call_args
+        assert kwargs["timeout"] == GITHUB_API_TIMEOUT_SECONDS
+
+    def test_fetch_retries_up_to_max_attempts_for_ssl_error(self) -> None:
+        with patch(
+            "src.sentry_config.requests.get",
+            side_effect=requests.exceptions.SSLError("tls eof"),
+        ) as request_get:
+            with self.assertRaises(requests.exceptions.SSLError):
+                fetch_dsn_for_github_org(org, token)
+
+        assert request_get.call_count == GITHUB_API_MAX_ATTEMPTS
+
+    def test_fetch_does_not_retry_non_retryable_request_error(self) -> None:
+        with patch(
+            "src.sentry_config.requests.get",
+            side_effect=requests.exceptions.HTTPError("bad request"),
+        ) as request_get:
+            with self.assertRaises(requests.exceptions.HTTPError):
+                fetch_dsn_for_github_org(org, token)
+
+        assert request_get.call_count == 1
 
     def test_fetch_private_repo(self) -> None:
         pass
