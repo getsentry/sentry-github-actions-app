@@ -6,6 +6,7 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
 from sentry_sdk.envelope import Envelope
@@ -38,6 +39,7 @@ class GithubClient:
             self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
             # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
+            self.sentry_project_host = urlparse(self.sentry_project_url).hostname
 
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
@@ -128,13 +130,22 @@ class GithubClient:
         with gzip.GzipFile(fileobj=body, mode="w") as f:
             envelope.serialize_into(f)
 
-        req = requests.post(
-            self.sentry_project_url,
-            data=body.getvalue(),
-            headers=headers,
-        )
-        req.raise_for_status()
-        return req
+        try:
+            req = requests.post(
+                self.sentry_project_url,
+                data=body.getvalue(),
+                headers=headers,
+                timeout=10,
+            )
+            req.raise_for_status()
+            return req
+        except requests.RequestException as e:
+            logging.exception(
+                "Failed to send envelope to Sentry host %s.",
+                self.sentry_project_host,
+            )
+            logging.debug(e)
+            return None
 
     def send_trace(self, job):
         # This can happen when the workflow is skipped and there are no steps
