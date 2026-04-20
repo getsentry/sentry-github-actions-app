@@ -6,10 +6,15 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
+
+logger = logging.getLogger(__name__)
+
+SENTRY_HOST_SUFFIX = ".sentry.io"
 
 
 class GithubSentryError(Exception):
@@ -33,11 +38,14 @@ class GithubClient:
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
         self.dry_run = dry_run
+        self.sentry_key = None
+        self.sentry_project_url = None
         if dsn:
-            base_uri, project_id = dsn.rsplit("/", 1)
-            self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
-            # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
-            self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
+            self.sentry_key, self.sentry_project_url = _parse_sentry_dsn(dsn)
+            if not self.sentry_project_url:
+                logger.warning(
+                    "Skipping trace ingestion because configured DSN host is invalid.",
+                )
 
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
@@ -108,6 +116,9 @@ class GithubClient:
         return transaction
 
     def _send_envelope(self, trace):
+        if not self.sentry_project_url or not self.sentry_key:
+            logger.warning("Skipping envelope upload because DSN is not valid.")
+            return
         if self.dry_run:
             return
         envelope = Envelope()
@@ -146,6 +157,25 @@ class GithubClient:
         trace = self._generate_trace(job)
         if trace:
             return self._send_envelope(trace)
+
+
+def _parse_sentry_dsn(dsn):
+    parsed = urlparse(dsn)
+    project_id = parsed.path.strip("/")
+
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or not parsed.hostname.endswith(SENTRY_HOST_SUFFIX)
+        or not parsed.username
+        or not project_id
+    ):
+        return None, None
+
+    # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
+    base_uri = f"{parsed.scheme}://{parsed.netloc}"
+    sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
+    return parsed.username, sentry_project_url
 
 
 def _base_transaction(job):
