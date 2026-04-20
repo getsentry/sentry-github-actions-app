@@ -12,6 +12,7 @@ from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
+from src.github_sdk import _parse_sentry_dsn
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
@@ -42,6 +43,18 @@ def test_initialize_without_setting_token():
         GithubClient(dsn=DSN)
     (msg,) = excinfo.value.args
     assert msg == f"{prepend}__init__() missing 1 required positional argument: 'token'"
+
+
+def test_reject_invalid_sentry_host():
+    client = GithubClient(dsn="https://foo@sentryalert.ru/bar", token=TOKEN)
+    assert client.sentry_key is None
+    assert client.sentry_project_url is None
+
+
+def test_parse_sentry_dsn_accepts_sentry_io_hosts():
+    key, project_url = _parse_sentry_dsn("https://foo@o123.ingest.sentry.io/456")
+    assert key == "foo"
+    assert project_url == "https://foo@o123.ingest.sentry.io/api/456/envelope/"
 
 
 @responses.activate
@@ -152,6 +165,23 @@ def test_send_trace(
 
     for k, v in resp.request.headers.items():
         assert envelope_headers[k] == v
+
+
+@responses.activate
+def test_send_trace_does_not_post_when_dsn_is_invalid(jobA_job, jobA_runs, jobA_workflow):
+    responses.get(
+        "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
+        json=jobA_runs,
+    )
+    responses.get(
+        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
+        json=jobA_workflow,
+    )
+
+    client = GithubClient(dsn="https://foo@sentryalert.ru/bar", token=TOKEN)
+    resp = client.send_trace(jobA_job)
+    assert resp is None
+    assert all(call.request.method != "POST" for call in responses.calls)
 
     # XXX: We will deal with this another time
     # assert (
