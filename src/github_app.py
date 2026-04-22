@@ -4,11 +4,17 @@ This module contains the logic to support running the app as a Github App
 from __future__ import annotations
 
 import contextlib
+import logging
+import os
 import time
 from typing import Generator
 
 import jwt
 import requests
+
+LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(LOGGING_LEVEL)
 
 
 class GithubAppToken:
@@ -29,10 +35,18 @@ class GithubAppToken:
             # This token expires in an hour
             yield resp["token"]
         finally:
-            requests.delete(
-                "https://api.github.com/installation/token",
-                headers={"Authorization": f"token {resp['token']}"},
-            )
+            try:
+                requests.delete(
+                    "https://api.github.com/installation/token",
+                    headers={"Authorization": f"token {resp['token']}"},
+                )
+            except requests.RequestException:
+                # Token revocation is best-effort. The token expires quickly even
+                # if this request fails, and we should not mask the primary error.
+                logger.warning(
+                    "Failed to revoke GitHub app installation token.",
+                    exc_info=True,
+                )
 
     def get_jwt_token(self, private_key, app_id):
         payload = {
