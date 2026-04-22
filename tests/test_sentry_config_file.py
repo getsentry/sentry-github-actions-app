@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from unittest.mock import Mock
+from unittest.mock import patch
 from unittest import TestCase
 
+import requests
 import responses
 
 from src.sentry_config import fetch_dsn_for_github_org
+from src.sentry_config import GITHUB_API_MAX_RETRIES
+from src.sentry_config import GITHUB_API_RETRY_BACKOFF_SECONDS
+from src.sentry_config import GITHUB_API_TIMEOUT_SECONDS
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
 expected_dsn = (
@@ -55,3 +61,39 @@ class TestSentryConfigCase(TestCase):
 
     def test_bad_contents(self) -> None:
         pass
+
+    @patch("src.sentry_config.time.sleep")
+    @patch("src.sentry_config.requests.get")
+    def test_fetch_retries_connection_error_once(
+        self,
+        mock_get: Mock,
+        mock_sleep: Mock,
+    ) -> None:
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = sentry_config_file_meta
+        mock_get.side_effect = [
+            requests.exceptions.ConnectionError("connection reset"),
+            response,
+        ]
+
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+        assert mock_get.call_count == 2
+        for call in mock_get.call_args_list:
+            assert call.kwargs["timeout"] == GITHUB_API_TIMEOUT_SECONDS
+        mock_sleep.assert_called_once_with(GITHUB_API_RETRY_BACKOFF_SECONDS)
+
+    @patch("src.sentry_config.time.sleep")
+    @patch("src.sentry_config.requests.get")
+    def test_fetch_raises_after_connection_error_retries_exhausted(
+        self,
+        mock_get: Mock,
+        mock_sleep: Mock,
+    ) -> None:
+        mock_get.side_effect = requests.exceptions.ConnectionError("connection reset")
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            fetch_dsn_for_github_org(org, token)
+
+        assert mock_get.call_count == GITHUB_API_MAX_RETRIES + 1
+        assert mock_sleep.call_count == GITHUB_API_MAX_RETRIES
