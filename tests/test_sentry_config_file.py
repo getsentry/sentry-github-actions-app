@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from unittest import TestCase
+from unittest.mock import Mock
+from unittest.mock import patch
 
+import requests
 import responses
 
+from src.sentry_config import GITHUB_API_TIMEOUT_SECONDS
+from src.sentry_config import MAX_GITHUB_API_ATTEMPTS
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -47,11 +52,48 @@ class TestSentryConfigCase(TestCase):
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
 
-    def test_fetch_private_repo(self) -> None:
-        pass
+    @patch("src.sentry_config.requests.get")
+    def test_fetch_parse_sentry_config_file_sets_timeout(self, mock_get) -> None:
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = sentry_config_file_meta
+        mock_get.return_value = response
 
-    def test_file_missing(self) -> None:
-        pass
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+        mock_get.assert_called_once_with(
+            self.api_url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"token {token}",
+            },
+            timeout=GITHUB_API_TIMEOUT_SECONDS,
+        )
+
+    @patch("src.sentry_config.time.sleep")
+    @patch("src.sentry_config.requests.get")
+    def test_fetch_private_repo_retries_transient_connection_error(
+        self, mock_get, mock_sleep
+    ) -> None:
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = sentry_config_file_meta
+        mock_get.side_effect = [requests.exceptions.ConnectionError("reset"), response]
+
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+        assert mock_get.call_count == 2
+        mock_sleep.assert_called_once_with(1.0)
+
+    @patch("src.sentry_config.time.sleep")
+    @patch("src.sentry_config.requests.get")
+    def test_file_missing_raises_after_max_attempts(self, mock_get, mock_sleep) -> None:
+        mock_get.side_effect = requests.exceptions.ConnectionError("reset")
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            fetch_dsn_for_github_org(org, token)
+
+        assert mock_get.call_count == MAX_GITHUB_API_ATTEMPTS
+        assert mock_sleep.call_count == MAX_GITHUB_API_ATTEMPTS - 1
 
     def test_bad_contents(self) -> None:
         pass
