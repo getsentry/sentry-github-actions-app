@@ -16,6 +16,10 @@ class GithubSentryError(Exception):
     pass
 
 
+class SentryEnvelopeSendError(Exception):
+    """Raised when posting a trace envelope to Sentry ingest fails."""
+
+
 def get_uuid():
     return uuid.uuid4().hex
 
@@ -145,7 +149,12 @@ class GithubClient:
             return
         trace = self._generate_trace(job)
         if trace:
-            return self._send_envelope(trace)
+            try:
+                return self._send_envelope(trace)
+            except requests.RequestException as err:
+                raise SentryEnvelopeSendError(
+                    "Failed to send trace envelope to Sentry ingest"
+                ) from err
 
 
 def _base_transaction(job):
