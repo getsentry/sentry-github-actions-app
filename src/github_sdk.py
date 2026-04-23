@@ -11,6 +11,9 @@ import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
+ENVELOPE_UPLOAD_MAX_ATTEMPTS = 3
+ENVELOPE_UPLOAD_TIMEOUT_SECONDS = 10
+
 
 class GithubSentryError(Exception):
     pass
@@ -128,13 +131,35 @@ class GithubClient:
         with gzip.GzipFile(fileobj=body, mode="w") as f:
             envelope.serialize_into(f)
 
-        req = requests.post(
-            self.sentry_project_url,
-            data=body.getvalue(),
-            headers=headers,
-        )
-        req.raise_for_status()
-        return req
+        for attempt in range(1, ENVELOPE_UPLOAD_MAX_ATTEMPTS + 1):
+            try:
+                req = requests.post(
+                    self.sentry_project_url,
+                    data=body.getvalue(),
+                    headers=headers,
+                    timeout=ENVELOPE_UPLOAD_TIMEOUT_SECONDS,
+                )
+                req.raise_for_status()
+                return req
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.SSLError,
+                requests.exceptions.Timeout,
+            ) as err:
+                if attempt == ENVELOPE_UPLOAD_MAX_ATTEMPTS:
+                    logging.warning(
+                        "Failed sending Sentry envelope after %s attempts: %s",
+                        ENVELOPE_UPLOAD_MAX_ATTEMPTS,
+                        err,
+                    )
+                    return
+                logging.info(
+                    "Retrying Sentry envelope upload after transient network error "
+                    "(attempt %s/%s): %s",
+                    attempt,
+                    ENVELOPE_UPLOAD_MAX_ATTEMPTS,
+                    err,
+                )
 
     def send_trace(self, job):
         # This can happen when the workflow is skipped and there are no steps
