@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+from src.github_sdk import SentryEnvelopeSendError
 from src.web_app_handler import WebAppHandler
 
 valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
@@ -106,5 +107,27 @@ def test_handle_event_with_secret(monkeypatch, webhook_event):
         data=webhook_event["payload"],
         headers=webhook_event["headers"],
     )
+    assert reason == "OK"
+    assert http_code == 200
+
+
+def test_handle_event_ignores_sentry_envelope_send_error(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    monkeypatch.setenv("GH_TOKEN", "irrelevant")
+    monkeypatch.delenv("GH_APP_ID", raising=False)
+
+    handler = WebAppHandler()
+    with (
+        mock.patch("src.web_app_handler.fetch_dsn_for_github_org", return_value="https://foo@random.ingest.sentry.io/bar"),
+        mock.patch(
+            "src.web_app_handler.GithubClient.send_trace",
+            side_effect=SentryEnvelopeSendError("Failed to send trace envelope to Sentry ingest"),
+        ),
+    ):
+        reason, http_code = handler.handle_event(
+            data=webhook_event["payload"],
+            headers=webhook_event["headers"],
+        )
+
     assert reason == "OK"
     assert http_code == 200

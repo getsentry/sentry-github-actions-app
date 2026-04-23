@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
+from .github_sdk import SentryEnvelopeSendError
 from src.sentry_config import fetch_dsn_for_github_org
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
@@ -49,7 +50,14 @@ class WebAppHandler:
                         dsn=dsn,
                         dry_run=self.dry_run,
                     )
-                    client.send_trace(data["workflow_job"])
+                    try:
+                        client.send_trace(data["workflow_job"])
+                    except SentryEnvelopeSendError:
+                        logger.exception(
+                            "Unable to send trace envelope to Sentry for org '%s'. "
+                            "Ignoring transient ingest failure and keeping webhook successful.",
+                            org,
+                        )
             else:
                 # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
                 dsn = fetch_dsn_for_github_org(org, token)
@@ -58,7 +66,14 @@ class WebAppHandler:
                     dsn=dsn,
                     dry_run=self.dry_run,
                 )
-                client.send_trace(data["workflow_job"])
+                try:
+                    client.send_trace(data["workflow_job"])
+                except SentryEnvelopeSendError:
+                    logger.exception(
+                        "Unable to send trace envelope to Sentry for org '%s'. "
+                        "Ignoring transient ingest failure and keeping webhook successful.",
+                        org,
+                    )
 
         return reason, http_code
 
