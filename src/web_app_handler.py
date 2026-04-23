@@ -60,7 +60,7 @@ class WebAppHandler:
                         )
             else:
                 # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                dsn = fetch_dsn_for_github_org(org, token)
+                dsn = fetch_dsn_for_github_org(org, self.config.gh.token)
                 client = GithubClient(
                     token=self.config.gh.token,
                     dsn=dsn,

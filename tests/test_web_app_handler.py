@@ -116,6 +116,9 @@ def test_handle_event_ignores_sentry_envelope_send_error(monkeypatch, webhook_ev
     monkeypatch.setenv("GH_TOKEN", "irrelevant")
     monkeypatch.delenv("GH_APP_ID", raising=False)
 
+    payload = json.loads(json.dumps(webhook_event["payload"]))
+    payload["installation"] = {"id": 1}
+
     handler = WebAppHandler()
     with (
         mock.patch("src.web_app_handler.fetch_dsn_for_github_org", return_value="https://foo@random.ingest.sentry.io/bar"),
@@ -125,7 +128,7 @@ def test_handle_event_ignores_sentry_envelope_send_error(monkeypatch, webhook_ev
         ),
     ):
         reason, http_code = handler.handle_event(
-            data=webhook_event["payload"],
+            data=payload,
             headers=webhook_event["headers"],
         )
 
