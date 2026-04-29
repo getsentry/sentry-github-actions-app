@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from unittest import TestCase
+from unittest.mock import Mock
+from unittest.mock import patch
 
+import requests
 import responses
 
 from src.sentry_config import fetch_dsn_for_github_org
@@ -46,6 +49,34 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    @patch("src.sentry_config.time.sleep")
+    @patch("src.sentry_config.requests.get")
+    def test_fetch_retries_transient_github_failures(
+        self,
+        mock_get: Mock,
+        mock_sleep: Mock,
+    ) -> None:
+        successful_response = Mock()
+        successful_response.json.return_value = sentry_config_file_meta
+        mock_get.side_effect = [
+            requests.ConnectionError("connection reset by peer"),
+            successful_response,
+        ]
+
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+        expected_headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {token}",
+        }
+        assert mock_get.call_count == 2
+        mock_get.assert_called_with(
+            self.api_url,
+            headers=expected_headers,
+            timeout=10,
+        )
+        mock_sleep.assert_called_once_with(0.5)
 
     def test_fetch_private_repo(self) -> None:
         pass
