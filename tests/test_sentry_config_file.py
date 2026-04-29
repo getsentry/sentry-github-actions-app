@@ -53,8 +53,8 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_retries_transient_connection_error(self) -> None:
         responses.replace(
-            method="GET",
-            url=self.api_url,
+            responses.GET,
+            self.api_url,
             body=ConnectionError("Connection reset by peer"),
         )
         responses.add(
