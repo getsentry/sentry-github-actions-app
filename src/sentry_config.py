@@ -4,7 +4,6 @@ import base64
 import logging
 import os
 from configparser import ConfigParser
-from functools import lru_cache
 
 import requests
 
@@ -15,6 +14,35 @@ logger.setLevel(LOGGING_LEVEL)
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
+GITHUB_API_TIMEOUT_SECONDS = 10
+GITHUB_API_RETRIES = 2
+GITHUB_API_RETRY_STATUS_CODES = {500, 502, 503, 504}
+
+
+def _fetch_github_config(api_url: str, headers: dict[str, str]) -> requests.Response:
+    for attempt in range(GITHUB_API_RETRIES + 1):
+        try:
+            resp = requests.get(
+                api_url,
+                headers=headers,
+                timeout=GITHUB_API_TIMEOUT_SECONDS,
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt == GITHUB_API_RETRIES:
+                raise
+            logger.warning("Retrying transient GitHub config fetch failure")
+            continue
+
+        if resp.status_code not in GITHUB_API_RETRY_STATUS_CODES:
+            return resp
+        if attempt == GITHUB_API_RETRIES:
+            return resp
+        logger.warning(
+            "Retrying GitHub config fetch after HTTP %s",
+            resp.status_code,
+        )
+
+    raise RuntimeError("unreachable")
 
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
@@ -27,7 +55,7 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
         api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
         # - Get meta about sentry_config.ini file
-        resp = requests.get(api_url, headers=headers)
+        resp = _fetch_github_config(api_url, headers)
         resp.raise_for_status()
         meta = resp.json()
 
