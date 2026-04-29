@@ -4,11 +4,8 @@ import base64
 import logging
 import os
 from configparser import ConfigParser
-from functools import lru_cache
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,24 +16,33 @@ SENTRY_CONFIG_API_URL = (
 )
 GITHUB_API_TIMEOUT_SECONDS = 10
 GITHUB_API_RETRIES = 2
+GITHUB_API_RETRY_STATUS_CODES = {500, 502, 503, 504}
 
 
-@lru_cache(maxsize=1)
-def _github_api_session() -> requests.Session:
-    retry = Retry(
-        total=GITHUB_API_RETRIES,
-        connect=GITHUB_API_RETRIES,
-        read=GITHUB_API_RETRIES,
-        status=GITHUB_API_RETRIES,
-        backoff_factor=0.25,
-        status_forcelist=(500, 502, 503, 504),
-        allowed_methods=("GET",),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session = requests.Session()
-    session.mount("https://api.github.com/", adapter)
-    return session
+def _fetch_github_config(api_url: str, headers: dict[str, str]) -> requests.Response:
+    for attempt in range(GITHUB_API_RETRIES + 1):
+        try:
+            resp = requests.get(
+                api_url,
+                headers=headers,
+                timeout=GITHUB_API_TIMEOUT_SECONDS,
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt == GITHUB_API_RETRIES:
+                raise
+            logger.warning("Retrying transient GitHub config fetch failure")
+            continue
+
+        if resp.status_code not in GITHUB_API_RETRY_STATUS_CODES:
+            return resp
+        if attempt == GITHUB_API_RETRIES:
+            return resp
+        logger.warning(
+            "Retrying GitHub config fetch after HTTP %s",
+            resp.status_code,
+        )
+
+    raise RuntimeError("unreachable")
 
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
@@ -49,11 +55,7 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
         api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
         # - Get meta about sentry_config.ini file
-        resp = _github_api_session().get(
-            api_url,
-            headers=headers,
-            timeout=GITHUB_API_TIMEOUT_SECONDS,
-        )
+        resp = _fetch_github_config(api_url, headers)
         resp.raise_for_status()
         meta = resp.json()
 

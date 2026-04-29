@@ -5,7 +5,6 @@ from unittest import TestCase
 import responses
 from requests.exceptions import ConnectionError
 
-from src.sentry_config import _github_api_session
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -36,7 +35,6 @@ token = "foo_token"
 
 class TestSentryConfigCase(TestCase):
     def setUp(self) -> None:
-        _github_api_session.cache_clear()
         self.api_url = api_url.replace("{owner}", org)
         responses.add(
             method="GET",
