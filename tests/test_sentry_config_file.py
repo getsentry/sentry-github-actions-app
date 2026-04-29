@@ -3,7 +3,9 @@ from __future__ import annotations
 from unittest import TestCase
 
 import responses
+from requests.exceptions import ConnectionError
 
+from src.sentry_config import _github_api_session
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -34,6 +36,7 @@ token = "foo_token"
 
 class TestSentryConfigCase(TestCase):
     def setUp(self) -> None:
+        _github_api_session.cache_clear()
         self.api_url = api_url.replace("{owner}", org)
         responses.add(
             method="GET",
@@ -46,6 +49,23 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    @responses.activate
+    def test_fetch_retries_transient_connection_error(self) -> None:
+        responses.replace(
+            method="GET",
+            url=self.api_url,
+            body=ConnectionError("Connection reset by peer"),
+        )
+        responses.add(
+            method="GET",
+            url=self.api_url,
+            json=sentry_config_file_meta,
+            status=200,
+        )
+
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+        assert len(responses.calls) == 2
 
     def test_fetch_private_repo(self) -> None:
         pass
