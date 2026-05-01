@@ -53,7 +53,7 @@ class GithubClient:
         repo = runs["repository"]["full_name"]
         meta = {
             # "workflow_name": workflow["name"],
-            "author": runs["head_commit"]["author"],
+            "author": _get_author(runs),
             # https://getsentry.atlassian.net/browse/TET-22
             # Tags are not linkified externally, plain text data can be selected in browsers and opened
             "data": {
@@ -146,6 +146,20 @@ class GithubClient:
         trace = self._generate_trace(job)
         if trace:
             return self._send_envelope(trace)
+
+
+def _get_author(runs):
+    head_commit = runs.get("head_commit") or {}
+    author = head_commit.get("author")
+    if author:
+        return author
+
+    actor = runs.get("triggering_actor") or runs.get("actor") or {}
+    login = actor.get("login")
+    if login:
+        return {"username": login}
+
+    return {}
 
 
 def _base_transaction(job):
