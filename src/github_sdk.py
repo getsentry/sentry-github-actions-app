@@ -26,6 +26,21 @@ def get_uuid_from_string(input_string):
     return uuid.UUID(hash_value[:32]).hex
 
 
+def _get_author_from_run(runs):
+    head_commit = runs.get("head_commit") or {}
+    author = head_commit.get("author")
+    if author:
+        return author
+
+    actor = runs.get("actor") or runs.get("triggering_actor") or {}
+    user = {}
+    if actor.get("id") is not None:
+        user["id"] = str(actor["id"])
+    if actor.get("login"):
+        user["username"] = actor["login"]
+    return user
+
+
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
@@ -53,7 +68,7 @@ class GithubClient:
         repo = runs["repository"]["full_name"]
         meta = {
             # "workflow_name": workflow["name"],
-            "author": runs["head_commit"]["author"],
+            "author": _get_author_from_run(runs),
             # https://getsentry.atlassian.net/browse/TET-22
             # Tags are not linkified externally, plain text data can be selected in browsers and opened
             "data": {

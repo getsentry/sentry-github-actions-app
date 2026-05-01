@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import sys
 from datetime import datetime
 from unittest.mock import patch
@@ -108,6 +109,33 @@ def test_trace_generation_with_failing_steps(
     # make sure the failing step exists
     assert trace["tags"]["failing_step"] == "Run calculate tests"
     assert trace["tags"]["event"] == "push"
+
+
+@responses.activate
+def test_trace_generation_without_head_commit_uses_actor(
+    failure_job,
+    failure_runs,
+    failure_workflow,
+):
+    runs = copy.deepcopy(failure_runs)
+    runs["head_commit"] = None
+
+    responses.get(
+        failure_job["run_url"],
+        json=runs,
+    )
+    responses.get(
+        runs["workflow_url"],
+        json=failure_workflow,
+    )
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    trace = client._generate_trace(failure_job)
+
+    assert trace["user"] == {
+        "id": str(runs["actor"]["id"]),
+        "username": runs["actor"]["login"],
+    }
 
 
 @freeze_time()
