@@ -12,6 +12,7 @@ from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
+from src.github_sdk import _get_author
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
@@ -108,6 +109,42 @@ def test_trace_generation_with_failing_steps(
     # make sure the failing step exists
     assert trace["tags"]["failing_step"] == "Run calculate tests"
     assert trace["tags"]["event"] == "push"
+
+
+def test_get_author_prefers_head_commit_author(jobA_runs):
+    assert _get_author(jobA_runs) == {
+        "name": "Ahmed Etefy",
+        "email": "ahmed.etefy12@gmail.com",
+    }
+
+
+def test_get_author_falls_back_to_triggering_actor_for_null_head_commit(jobA_runs):
+    jobA_runs["event"] = "merge_group"
+    jobA_runs["head_commit"] = None
+    jobA_runs["triggering_actor"]["login"] = "merge-queue-user"
+
+    assert _get_author(jobA_runs) == {"username": "merge-queue-user"}
+
+
+@responses.activate
+def test_trace_generation_with_null_head_commit(jobA_job, jobA_runs, jobA_workflow):
+    jobA_runs["event"] = "merge_group"
+    jobA_runs["head_commit"] = None
+
+    responses.get(
+        jobA_job["run_url"],
+        json=jobA_runs,
+    )
+    responses.get(
+        jobA_runs["workflow_url"],
+        json=jobA_workflow,
+    )
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    trace = client._generate_trace(jobA_job)
+
+    assert trace["tags"]["event"] == "merge_group"
+    assert trace["user"] == {"username": "ahmedetefy"}
 
 
 @freeze_time()
