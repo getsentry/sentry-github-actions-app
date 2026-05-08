@@ -59,6 +59,19 @@ def test_ensure_raise_error_on_github_api_failure():
     )
 
 
+@responses.activate
+def test_fetch_github_retries_transient_connection_errors():
+    url = "https://api.github.com/repos/example/project/actions/runs/1"
+    responses.get(url, body=requests.ConnectionError("reset"))
+    responses.get(url, json={"ok": True})
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    resp = client._fetch_github(url)
+
+    assert resp.json() == {"ok": True}
+    assert len(responses.calls) == 2
+
+
 @freeze_time()
 @responses.activate
 @patch("src.github_sdk.get_uuid")
