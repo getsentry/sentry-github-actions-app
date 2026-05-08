@@ -59,6 +59,20 @@ def test_ensure_raise_error_on_github_api_failure():
     )
 
 
+@responses.activate
+@patch("src.github_requests.time.sleep")
+def test_retries_github_api_connection_errors(mock_sleep):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    responses.get(url, body=requests.exceptions.ConnectionError("connection reset"))
+    responses.get(url, json={"ok": True})
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    resp = client._fetch_github(url)
+
+    assert resp.json() == {"ok": True}
+    assert len(responses.calls) == 2
+
+
 @freeze_time()
 @responses.activate
 @patch("src.github_sdk.get_uuid")
