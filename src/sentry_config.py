@@ -6,7 +6,7 @@ import os
 from configparser import ConfigParser
 from functools import lru_cache
 
-import requests
+from .github_requests import github_request
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
         api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
         # - Get meta about sentry_config.ini file
-        resp = requests.get(api_url, headers=headers)
+        resp = github_request("GET", api_url, headers=headers)
         resp.raise_for_status()
         meta = resp.json()
 
