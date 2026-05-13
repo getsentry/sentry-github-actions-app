@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -11,7 +11,7 @@ from freezegun import freeze_time
 from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
-from src.github_sdk import GithubClient
+from src.github_sdk import GithubClient, GITHUB_REQUEST_TIMEOUT
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
@@ -57,6 +57,44 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+@patch("src.github_sdk.time.sleep")
+@patch("src.github_sdk.requests.get")
+def test_retries_transient_github_api_failure(mock_get, mock_sleep):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/123"
+    response = Mock()
+    response.raise_for_status.return_value = None
+    mock_get.side_effect = [
+        requests.exceptions.SSLError("transient TLS failure"),
+        response,
+    ]
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+
+    assert client._fetch_github(url) is response
+    assert mock_get.call_count == 2
+    mock_get.assert_called_with(
+        url,
+        headers={"Authorization": f"token {TOKEN}"},
+        timeout=GITHUB_REQUEST_TIMEOUT,
+    )
+    mock_sleep.assert_called_once_with(0.25)
+
+
+@patch("src.github_sdk.time.sleep")
+@patch("src.github_sdk.requests.get")
+def test_exhausts_transient_github_api_retries(mock_get, mock_sleep):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/123"
+    mock_get.side_effect = requests.exceptions.SSLError("transient TLS failure")
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+
+    with pytest.raises(requests.exceptions.SSLError):
+        client._fetch_github(url)
+
+    assert mock_get.call_count == 3
+    assert mock_sleep.call_count == 2
 
 
 @freeze_time()
