@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
@@ -57,6 +58,50 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+def test_fetch_github_retries_transient_ssl_errors(monkeypatch):
+    url = "https://api.github.com/repos/example/repo/actions/runs/1"
+    response = Mock()
+    response.raise_for_status.return_value = None
+    request = Mock(
+        side_effect=[
+            requests.exceptions.SSLError("transient tls failure"),
+            response,
+        ],
+    )
+    sleep = Mock()
+    monkeypatch.setattr("src.github_sdk.requests.get", request)
+    monkeypatch.setattr("src.github_sdk.time.sleep", sleep)
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+
+    assert client._fetch_github(url) is response
+    assert request.call_count == 2
+    request.assert_called_with(
+        url,
+        headers={"Authorization": f"token {TOKEN}"},
+        timeout=10,
+    )
+    sleep.assert_called_once_with(0.5)
+
+
+def test_fetch_github_reraises_transient_errors_after_retries(monkeypatch):
+    url = "https://api.github.com/repos/example/repo/actions/runs/1"
+    request = Mock(side_effect=requests.exceptions.SSLError("transient tls failure"))
+    sleep = Mock()
+    monkeypatch.setattr("src.github_sdk.requests.get", request)
+    monkeypatch.setattr("src.github_sdk.time.sleep", sleep)
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+
+    with pytest.raises(requests.exceptions.SSLError):
+        client._fetch_github(url)
+
+    assert request.call_count == 3
+    assert sleep.call_count == 2
+    sleep.assert_any_call(0.5)
+    sleep.assert_any_call(1.0)
 
 
 @freeze_time()
