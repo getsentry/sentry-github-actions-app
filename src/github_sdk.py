@@ -11,6 +11,8 @@ import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
+logger = logging.getLogger(__name__)
+
 
 class GithubSentryError(Exception):
     pass
@@ -128,12 +130,19 @@ class GithubClient:
         with gzip.GzipFile(fileobj=body, mode="w") as f:
             envelope.serialize_into(f)
 
-        req = requests.post(
-            self.sentry_project_url,
-            data=body.getvalue(),
-            headers=headers,
-        )
-        req.raise_for_status()
+        try:
+            req = requests.post(
+                self.sentry_project_url,
+                data=body.getvalue(),
+                headers=headers,
+            )
+            req.raise_for_status()
+        except requests.exceptions.SSLError:
+            logger.warning(
+                "Failed to send Sentry envelope because of an SSL transport error.",
+                exc_info=True,
+            )
+            return None
         return req
 
     def send_trace(self, job):
