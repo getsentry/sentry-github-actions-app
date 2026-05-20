@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import io
 import logging
+import time
 import uuid
 from datetime import datetime
 
@@ -29,6 +30,9 @@ def get_uuid_from_string(input_string):
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
+    request_timeout_seconds = 10
+    sentry_envelope_retry_attempts = 3
+    sentry_envelope_retry_backoff_seconds = 0.25
 
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
@@ -128,13 +132,35 @@ class GithubClient:
         with gzip.GzipFile(fileobj=body, mode="w") as f:
             envelope.serialize_into(f)
 
-        req = requests.post(
-            self.sentry_project_url,
-            data=body.getvalue(),
-            headers=headers,
-        )
+        req = self._post_sentry_envelope_with_retries(body.getvalue(), headers)
         req.raise_for_status()
         return req
+
+    def _post_sentry_envelope_with_retries(self, data, headers):
+        retryable_errors = (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.SSLError,
+            requests.exceptions.Timeout,
+        )
+        for attempt in range(1, self.sentry_envelope_retry_attempts + 1):
+            try:
+                return requests.post(
+                    self.sentry_project_url,
+                    data=data,
+                    headers=headers,
+                    timeout=self.request_timeout_seconds,
+                )
+            except retryable_errors:
+                if attempt == self.sentry_envelope_retry_attempts:
+                    raise
+                logging.warning(
+                    "Transient error sending Sentry envelope; retrying attempt %s/%s",
+                    attempt + 1,
+                    self.sentry_envelope_retry_attempts,
+                )
+                time.sleep(
+                    self.sentry_envelope_retry_backoff_seconds * 2 ** (attempt - 1),
+                )
 
     def send_trace(self, job):
         # This can happen when the workflow is skipped and there are no steps
