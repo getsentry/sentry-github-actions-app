@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from unittest.mock import call
+from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
@@ -57,6 +59,54 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+@patch("src.github_sdk.time.sleep")
+@patch("src.github_sdk.requests.get")
+def test_fetch_github_retries_transient_connect_timeout(mock_get, mock_sleep):
+    url = "https://api.github.com/repos/example/repo/actions/runs/1"
+    response = Mock()
+    response.raise_for_status.return_value = None
+    mock_get.side_effect = [
+        requests.exceptions.ConnectTimeout("connect timed out"),
+        response,
+    ]
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    resp = client._fetch_github(url)
+
+    assert resp is response
+    assert mock_get.call_count == 2
+    mock_get.assert_has_calls(
+        [
+            call(
+                url,
+                headers={"Authorization": f"token {TOKEN}"},
+                timeout=10,
+            ),
+            call(
+                url,
+                headers={"Authorization": f"token {TOKEN}"},
+                timeout=10,
+            ),
+        ]
+    )
+    mock_sleep.assert_called_once_with(0.5)
+
+
+@patch("src.github_sdk.time.sleep")
+@patch("src.github_sdk.requests.get")
+def test_fetch_github_raises_after_transient_retries(mock_get, mock_sleep):
+    url = "https://api.github.com/repos/example/repo/actions/runs/1"
+    error = requests.exceptions.ConnectTimeout("connect timed out")
+    mock_get.side_effect = error
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    with pytest.raises(requests.exceptions.ConnectTimeout):
+        client._fetch_github(url)
+
+    assert mock_get.call_count == 3
+    mock_sleep.assert_has_calls([call(0.5), call(1.0)])
 
 
 @freeze_time()

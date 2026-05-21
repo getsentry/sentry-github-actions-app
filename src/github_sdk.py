@@ -4,12 +4,22 @@ import gzip
 import hashlib
 import io
 import logging
+import time
 import uuid
 from datetime import datetime
 
 import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
+
+GITHUB_REQUEST_MAX_ATTEMPTS = 3
+GITHUB_REQUEST_RETRY_BACKOFF_SECONDS = 0.5
+GITHUB_REQUEST_TIMEOUT_SECONDS = 10
+GITHUB_RETRYABLE_EXCEPTIONS = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+    requests.exceptions.SSLError,
+)
 
 
 class GithubSentryError(Exception):
@@ -42,9 +52,25 @@ class GithubClient:
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
 
-        req = requests.get(url, headers=headers)
-        req.raise_for_status()
-        return req
+        for attempt in range(1, GITHUB_REQUEST_MAX_ATTEMPTS + 1):
+            try:
+                req = requests.get(
+                    url,
+                    headers=headers,
+                    timeout=GITHUB_REQUEST_TIMEOUT_SECONDS,
+                )
+                req.raise_for_status()
+                return req
+            except GITHUB_RETRYABLE_EXCEPTIONS:
+                if attempt == GITHUB_REQUEST_MAX_ATTEMPTS:
+                    raise
+
+                logging.warning(
+                    "Transient GitHub API request failed; retrying (%s/%s)",
+                    attempt,
+                    GITHUB_REQUEST_MAX_ATTEMPTS,
+                )
+                time.sleep(GITHUB_REQUEST_RETRY_BACKOFF_SECONDS * 2 ** (attempt - 1))
 
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
