@@ -11,6 +11,8 @@ import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
+HTTP_TIMEOUT = (3.05, 10)
+
 
 class GithubSentryError(Exception):
     pass
@@ -42,7 +44,7 @@ class GithubClient:
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
 
-        req = requests.get(url, headers=headers)
+        req = requests.get(url, headers=headers, timeout=HTTP_TIMEOUT)
         req.raise_for_status()
         return req
 
@@ -132,6 +134,7 @@ class GithubClient:
             self.sentry_project_url,
             data=body.getvalue(),
             headers=headers,
+            timeout=HTTP_TIMEOUT,
         )
         req.raise_for_status()
         return req

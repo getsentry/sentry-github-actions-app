@@ -15,6 +15,7 @@ logger.setLevel(LOGGING_LEVEL)
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
+GITHUB_API_TIMEOUT = (3.05, 10)
 
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
@@ -27,7 +28,7 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
         api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
         # - Get meta about sentry_config.ini file
-        resp = requests.get(api_url, headers=headers)
+        resp = requests.get(api_url, headers=headers, timeout=GITHUB_API_TIMEOUT)
         resp.raise_for_status()
         meta = resp.json()
 
