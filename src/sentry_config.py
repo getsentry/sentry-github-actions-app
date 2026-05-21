@@ -15,6 +15,12 @@ logger.setLevel(LOGGING_LEVEL)
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
+GITHUB_REQUEST_TIMEOUT = 5
+GITHUB_REQUEST_ATTEMPTS = 3
+GITHUB_RETRYABLE_EXCEPTIONS = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+)
 
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
@@ -27,7 +33,7 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
         api_url = SENTRY_CONFIG_API_URL.replace("{owner}", org)
 
         # - Get meta about sentry_config.ini file
-        resp = requests.get(api_url, headers=headers)
+        resp = _fetch_sentry_config(api_url, headers)
         resp.raise_for_status()
         meta = resp.json()
 
@@ -46,3 +52,20 @@ def fetch_dsn_for_github_org(org: str, token: str) -> str:
     except Exception as e:
         logger.exception(e)
         raise e
+
+
+def _fetch_sentry_config(api_url, headers):
+    for attempt in range(1, GITHUB_REQUEST_ATTEMPTS + 1):
+        try:
+            return requests.get(
+                api_url,
+                headers=headers,
+                timeout=GITHUB_REQUEST_TIMEOUT,
+            )
+        except GITHUB_RETRYABLE_EXCEPTIONS as e:
+            if attempt == GITHUB_REQUEST_ATTEMPTS:
+                raise
+            logger.warning(
+                "Retrying GitHub Sentry config fetch after transient error: %s",
+                e,
+            )
