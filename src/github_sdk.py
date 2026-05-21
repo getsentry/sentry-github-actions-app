@@ -6,10 +6,13 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
+
+GITHUB_API_TIMEOUT = (3.05, 10)
 
 
 class GithubSentryError(Exception):
@@ -42,35 +45,47 @@ class GithubClient:
     def _fetch_github(self, url):
         headers = {"Authorization": f"token {self.token}"}
 
-        req = requests.get(url, headers=headers)
+        req = requests.get(url, headers=headers, timeout=GITHUB_API_TIMEOUT)
         req.raise_for_status()
         return req
 
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
-        runs = self._fetch_github(job["run_url"]).json()
-        workflow = self._fetch_github(runs["workflow_url"]).json()
+        meta = _metadata_from_job(job)
+        try:
+            runs = self._fetch_github(job["run_url"]).json()
+        except requests.exceptions.Timeout:
+            logging.warning(
+                "Timed out fetching Github run metadata for job %s.",
+                job.get("id"),
+            )
+            return meta
+
+        workflow_name = runs.get("name")
+        try:
+            workflow = self._fetch_github(runs["workflow_url"]).json()
+            workflow_name = workflow["path"].rsplit("/")[-1]
+        except requests.exceptions.Timeout:
+            logging.warning(
+                "Timed out fetching Github workflow metadata for run %s.",
+                runs.get("id"),
+            )
+
         repo = runs["repository"]["full_name"]
-        meta = {
-            # "workflow_name": workflow["name"],
-            "author": runs["head_commit"]["author"],
-            # https://getsentry.atlassian.net/browse/TET-22
-            # Tags are not linkified externally, plain text data can be selected in browsers and opened
-            "data": {
-                "job": job["html_url"],
-            },
-            "tags": {
-                # e.g. success, failure, skipped
-                "job_status": job["conclusion"],
-                "branch": runs["head_branch"],
-                "commit": runs["head_sha"],
-                "repo": repo,
-                "run_attempt": runs["run_attempt"],  # Rerunning a job
-                "event": runs["event"],
-                # It allows querying jobs within the same workflow (e.g. foo.yml)
-                "workflow": workflow["path"].rsplit("/")[-1],
-            },
-        }
+        meta["author"] = runs["head_commit"]["author"]
+        meta["tags"].update(
+            _without_empty_values(
+                {
+                    "branch": runs["head_branch"],
+                    "commit": runs["head_sha"],
+                    "repo": repo,
+                    "run_attempt": runs["run_attempt"],  # Rerunning a job
+                    "event": runs["event"],
+                    # It allows querying jobs within the same workflow (e.g. foo.yml)
+                    "workflow": workflow_name,
+                }
+            )
+        )
         if runs.get("pull_requests"):
             pr_number = runs["pull_requests"][0]["number"]
             meta["data"]["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
@@ -176,6 +191,40 @@ def _base_transaction(job):
         "start_timestamp": job["started_at"],
         "timestamp": job["completed_at"],
     }
+
+
+def _metadata_from_job(job):
+    # https://getsentry.atlassian.net/browse/TET-22
+    # Tags are not linkified externally, plain text data can be selected in browsers and opened
+    return {
+        "author": {},
+        "data": {
+            "job": job["html_url"],
+        },
+        "tags": _without_empty_values(
+            {
+                # e.g. success, failure, skipped
+                "job_status": job["conclusion"],
+                "commit": job.get("head_sha"),
+                "repo": _repo_from_run_url(job.get("run_url")),
+                "run_attempt": job.get("run_attempt"),  # Rerunning a job
+                "workflow": job.get("workflow_name"),
+            }
+        ),
+    }
+
+
+def _repo_from_run_url(run_url):
+    if not run_url:
+        return None
+    path_parts = urlparse(run_url).path.strip("/").split("/")
+    if len(path_parts) < 3 or path_parts[0] != "repos":
+        return None
+    return f"{path_parts[1]}/{path_parts[2]}"
+
+
+def _without_empty_values(items):
+    return {key: value for key, value in items.items() if value is not None}
 
 
 # https://develop.sentry.dev/sdk/event-payloads/span/

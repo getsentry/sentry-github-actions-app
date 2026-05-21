@@ -11,6 +11,7 @@ from freezegun import freeze_time
 from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
+from src.github_sdk import GITHUB_API_TIMEOUT
 from src.github_sdk import GithubClient
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
@@ -57,6 +58,21 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+@patch("src.github_sdk.requests.get")
+def test_fetch_github_sets_timeout(mock_get):
+    url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+    client = GithubClient(dsn=DSN, token=TOKEN)
+
+    client._fetch_github(url)
+
+    mock_get.assert_called_once_with(
+        url,
+        headers={"Authorization": f"token {TOKEN}"},
+        timeout=GITHUB_API_TIMEOUT,
+    )
+    mock_get.return_value.raise_for_status.assert_called_once()
 
 
 @freeze_time()
@@ -108,6 +124,51 @@ def test_trace_generation_with_failing_steps(
     # make sure the failing step exists
     assert trace["tags"]["failing_step"] == "Run calculate tests"
     assert trace["tags"]["event"] == "push"
+
+
+@responses.activate
+def test_trace_generation_with_run_metadata_timeout(jobA_job):
+    responses.get(
+        jobA_job["run_url"],
+        body=requests.exceptions.ConnectTimeout(),
+    )
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    trace = client._generate_trace(jobA_job)
+
+    assert trace["user"] == {}
+    assert trace["contexts"]["trace"]["data"] == {"job": jobA_job["html_url"]}
+    assert trace["tags"] == {
+        "job_status": "success",
+        "commit": jobA_job["head_sha"],
+        "repo": "getsentry/sentry",
+        "run_attempt": 1,
+    }
+
+
+@responses.activate
+def test_trace_generation_with_workflow_metadata_timeout(
+    jobA_job,
+    jobA_runs,
+):
+    responses.get(
+        jobA_job["run_url"],
+        json=jobA_runs,
+    )
+    responses.get(
+        jobA_runs["workflow_url"],
+        body=requests.exceptions.ConnectTimeout(),
+    )
+
+    client = GithubClient(dsn=DSN, token=TOKEN)
+    trace = client._generate_trace(jobA_job)
+
+    assert trace["user"] == jobA_runs["head_commit"]["author"]
+    assert trace["tags"]["branch"] == jobA_runs["head_branch"]
+    assert trace["tags"]["commit"] == jobA_runs["head_sha"]
+    assert trace["tags"]["event"] == jobA_runs["event"]
+    assert trace["tags"]["repo"] == jobA_runs["repository"]["full_name"]
+    assert trace["tags"]["workflow"] == jobA_runs["name"]
 
 
 @freeze_time()
