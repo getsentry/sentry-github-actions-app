@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from unittest import TestCase
 
+import pytest
+import requests
 import responses
 
+from src.sentry_config import GITHUB_REQUEST_ATTEMPTS
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -46,6 +49,40 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    @responses.activate
+    def test_fetch_retries_transient_timeout(self) -> None:
+        retry_org = "example-org"
+        retry_url = api_url.replace("{owner}", retry_org)
+        responses.add(
+            method="GET",
+            url=retry_url,
+            body=requests.exceptions.ConnectTimeout("connection timed out"),
+        )
+        responses.add(
+            method="GET",
+            url=retry_url,
+            json=sentry_config_file_meta,
+            status=200,
+        )
+
+        assert fetch_dsn_for_github_org(retry_org, token) == expected_dsn
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_fetch_raises_after_retry_exhaustion(self) -> None:
+        retry_org = "example-org"
+        retry_url = api_url.replace("{owner}", retry_org)
+        for _ in range(GITHUB_REQUEST_ATTEMPTS):
+            responses.add(
+                method="GET",
+                url=retry_url,
+                body=requests.exceptions.ConnectTimeout("connection timed out"),
+            )
+
+        with pytest.raises(requests.exceptions.ConnectTimeout):
+            fetch_dsn_for_github_org(retry_org, token)
+        assert len(responses.calls) == GITHUB_REQUEST_ATTEMPTS
 
     def test_fetch_private_repo(self) -> None:
         pass
