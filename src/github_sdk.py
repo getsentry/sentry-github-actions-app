@@ -6,6 +6,7 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
 from sentry_sdk.envelope import Envelope
@@ -31,6 +32,7 @@ def get_uuid_from_string(input_string):
 class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
+    allowed_github_hosts = {"api.github.com", "github.com"}
 
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
@@ -41,7 +43,15 @@ class GithubClient:
             # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
+    def _validate_github_url(self, url):
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            raise GithubSentryError(f"Blocked non-HTTPS URL: {url}")
+        if not parsed.hostname or parsed.hostname not in self.allowed_github_hosts:
+            raise GithubSentryError(f"Blocked non-GitHub URL host: {url}")
+
     def _fetch_github(self, url):
+        self._validate_github_url(url)
         headers = {"Authorization": f"token {self.token}"}
 
         req = requests.get(url, headers=headers, timeout=HTTP_TIMEOUT)
