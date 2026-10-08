@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import base64
 import json
 from unittest import mock
 
 import pytest
 import responses
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from src.web_app_handler import WebAppHandler
 
@@ -55,10 +58,24 @@ def test_not_completed_workflow():
     assert http_code == 200
 
 
+@pytest.fixture
+def gh_app_env(monkeypatch):
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    monkeypatch.delenv("K_SERVICE", raising=False)
+    monkeypatch.setenv("GH_APP_ID", "1")
+    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(pem).decode())
+
+
 @responses.activate
-def test_skipped_job_makes_no_api_calls(monkeypatch, skipped_workflow):
-    monkeypatch.delenv("GH_APP_ID", raising=False)
+def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
     handler = WebAppHandler()
+    # Only Github App mode mints an installation token
+    assert handler.config.gh_app
     reason, http_code = handler.handle_event(
         data={
             "action": "completed",

@@ -4,14 +4,12 @@ import json
 
 import pytest
 
-from src.github_sdk import GithubClient
-from src.sentry_config import fetch_dsn_for_github_org
+from src import sentry_config
 
 
 @pytest.fixture(autouse=True)
-def clear_caches():
-    fetch_dsn_for_github_org.cache_clear()
-    GithubClient._fetch_workflow_path.cache_clear()
+def clear_dsn_cache():
+    sentry_config._dsn_cache.clear()
 
 
 @pytest.fixture
@@ -23,12 +21,6 @@ def jobA_job():
 @pytest.fixture
 def jobA_runs():
     with open("tests/fixtures/jobA/runs.json") as f:
-        return json.load(f)
-
-
-@pytest.fixture
-def jobA_workflow():
-    with open("tests/fixtures/jobA/workflow.json") as f:
         return json.load(f)
 
 
@@ -73,10 +65,4 @@ def failure_job():
 @pytest.fixture
 def failure_runs():
     with open("tests/fixtures/failedJob/runs.json") as f:
-        return json.load(f)
-
-
-@pytest.fixture
-def failure_workflow():
-    with open("tests/fixtures/failedJob/workflow.json") as f:
         return json.load(f)

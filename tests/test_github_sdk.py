@@ -66,7 +66,6 @@ def test_trace_generation(
     mock_get_uuid,
     jobA_job,
     jobA_runs,
-    jobA_workflow,
     jobA_trace,
     uuid_list,
 ):
@@ -74,10 +73,6 @@ def test_trace_generation(
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
         json=jobA_runs,
-    )
-    responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
-        json=jobA_workflow,
     )
     client = GithubClient(dsn=DSN, token=TOKEN)
     trace = client._generate_trace(jobA_job)
@@ -91,15 +86,10 @@ def test_trace_generation(
 def test_trace_generation_with_failing_steps(
     failure_job,
     failure_runs,
-    failure_workflow,
 ):
     responses.get(
         failure_job["run_url"],
         json=failure_runs,
-    )
-    responses.get(
-        failure_runs["workflow_url"],
-        json=failure_workflow,
     )
 
     client = GithubClient(dsn=DSN, token=TOKEN)
@@ -111,21 +101,18 @@ def test_trace_generation_with_failing_steps(
 
 
 @responses.activate
-def test_workflow_is_fetched_once_for_jobs_of_a_run(
-    jobA_job,
-    jobA_runs,
-    jobA_workflow,
-):
+def test_trace_generation_for_required_workflow(jobA_job, jobA_runs):
+    # Fetching a required workflow's `workflow_url` fails with a 422, and `responses`
+    # raises on any request that isn't registered
+    jobA_runs[
+        "workflow_url"
+    ] = "https://api.github.com/repos/getsentry/sentry/actions/required_workflows/1"
     responses.get(jobA_job["run_url"], json=jobA_runs)
-    responses.get(jobA_runs["workflow_url"], json=jobA_workflow)
 
-    # Each job comes from a separate webhook, thus, a separate client
-    for token in ("token_1", "token_2"):
-        trace = GithubClient(dsn=DSN, token=token)._generate_trace(jobA_job)
-        assert trace["tags"]["workflow"] == "acceptance.yml"
+    trace = GithubClient(dsn=DSN, token=TOKEN)._generate_trace(jobA_job)
 
-    responses.assert_call_count(jobA_job["run_url"], 2)
-    responses.assert_call_count(jobA_runs["workflow_url"], 1)
+    assert trace["tags"]["workflow"] == "acceptance.yml"
+    assert len(responses.calls) == 1
 
 
 @freeze_time()
@@ -135,17 +122,12 @@ def test_send_trace(
     mock_get_uuid,
     jobA_job,
     jobA_runs,
-    jobA_workflow,
     uuid_list,
 ):
     mock_get_uuid.side_effect = uuid_list
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
         json=jobA_runs,
-    )
-    responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
-        json=jobA_workflow,
     )
 
     responses.post("https://foo@random.ingest.sentry.io/api/bar/envelope/")
