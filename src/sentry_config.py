@@ -3,10 +3,13 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import threading
 from configparser import ConfigParser
-from functools import lru_cache
 
 import requests
+from cachetools import cached
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,8 +18,16 @@ logger.setLevel(LOGGING_LEVEL)
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
+# Fetching the config on every webhook exhausts busy orgs' GitHub API rate limit
+DSN_CACHE_TTL_SECONDS = 10 * 60
 
 
+@cached(
+    cache=TTLCache(maxsize=1024, ttl=DSN_CACHE_TTL_SECONDS),
+    # The token is minted per webhook, so only the org identifies the DSN
+    key=lambda org, token: hashkey(org),
+    lock=threading.Lock(),
+)
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
     # Using the GH app token allows fetching the file in a private repo
     headers = {

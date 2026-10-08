@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from unittest import TestCase
 
+import pytest
 import responses
+from requests import HTTPError
 
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
@@ -45,6 +47,39 @@ class TestSentryConfigCase(TestCase):
 
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
+        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+
+    @responses.activate
+    def test_dsn_is_cached_per_org(self) -> None:
+        other_org_api_url = api_url.replace("{owner}", "other_org")
+        responses.add(
+            method="GET",
+            url=other_org_api_url,
+            json=sentry_config_file_meta,
+            status=200,
+        )
+
+        # Every webhook comes with a new token
+        assert fetch_dsn_for_github_org(org, "token_1") == expected_dsn
+        assert fetch_dsn_for_github_org(org, "token_2") == expected_dsn
+        assert fetch_dsn_for_github_org("other_org", "token_3") == expected_dsn
+
+        responses.assert_call_count(self.api_url, 1)
+        responses.assert_call_count(other_org_api_url, 1)
+
+    @responses.activate
+    def test_failed_fetch_is_not_cached(self) -> None:
+        responses.replace(responses.GET, self.api_url, status=403)
+        with pytest.raises(HTTPError):
+            fetch_dsn_for_github_org(org, token)
+
+        # e.g. the org's GitHub API rate limit has been reset
+        responses.replace(
+            responses.GET,
+            self.api_url,
+            json=sentry_config_file_meta,
+            status=200,
+        )
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
 
     def test_fetch_private_repo(self) -> None:

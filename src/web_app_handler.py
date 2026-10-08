@@ -29,6 +29,9 @@ class WebAppHandler:
             reason = "Event not supported."
         elif data["action"] != "completed":
             reason = "We cannot do anything with this workflow state."
+        elif data["workflow_job"]["conclusion"] == "skipped":
+            # These are not traced, so don't spend GitHub API calls on them
+            reason = "Skipped jobs are not traced."
         else:
             # For now, this simplifies testing
             if self.dry_run:

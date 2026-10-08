@@ -4,6 +4,7 @@ import json
 from unittest import mock
 
 import pytest
+import responses
 
 from src.web_app_handler import WebAppHandler
 
@@ -52,6 +53,24 @@ def test_not_completed_workflow():
     )
     assert reason == "We cannot do anything with this workflow state."
     assert http_code == 200
+
+
+@responses.activate
+def test_skipped_job_makes_no_api_calls(monkeypatch, skipped_workflow):
+    monkeypatch.delenv("GH_APP_ID", raising=False)
+    handler = WebAppHandler()
+    reason, http_code = handler.handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"owner": {"login": "getsentry"}},
+            "workflow_job": skipped_workflow,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "Skipped jobs are not traced."
+    assert http_code == 200
+    assert len(responses.calls) == 0
 
 
 @pytest.mark.skip(reason="Not so important")

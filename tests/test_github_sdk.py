@@ -110,6 +110,24 @@ def test_trace_generation_with_failing_steps(
     assert trace["tags"]["event"] == "push"
 
 
+@responses.activate
+def test_workflow_is_fetched_once_for_jobs_of_a_run(
+    jobA_job,
+    jobA_runs,
+    jobA_workflow,
+):
+    responses.get(jobA_job["run_url"], json=jobA_runs)
+    responses.get(jobA_runs["workflow_url"], json=jobA_workflow)
+
+    # Each job comes from a separate webhook, thus, a separate client
+    for token in ("token_1", "token_2"):
+        trace = GithubClient(dsn=DSN, token=token)._generate_trace(jobA_job)
+        assert trace["tags"]["workflow"] == "acceptance.yml"
+
+    responses.assert_call_count(jobA_job["run_url"], 2)
+    responses.assert_call_count(jobA_runs["workflow_url"], 1)
+
+
 @freeze_time()
 @responses.activate
 @patch("src.github_sdk.get_uuid")

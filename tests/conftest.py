@@ -4,6 +4,15 @@ import json
 
 import pytest
 
+from src.github_sdk import GithubClient
+from src.sentry_config import fetch_dsn_for_github_org
+
+
+@pytest.fixture(autouse=True)
+def clear_caches():
+    fetch_dsn_for_github_org.cache_clear()
+    GithubClient._fetch_workflow_path.cache_clear()
+
 
 @pytest.fixture
 def jobA_job():

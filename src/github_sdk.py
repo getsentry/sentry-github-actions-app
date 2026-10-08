@@ -4,10 +4,14 @@ import gzip
 import hashlib
 import io
 import logging
+import threading
 import uuid
 from datetime import datetime
 
 import requests
+from cachetools import cached
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
@@ -46,10 +50,20 @@ class GithubClient:
         req.raise_for_status()
         return req
 
+    # Every job of a run shares its workflow, whose path rarely changes, so this saves
+    # a GitHub API call per job
+    @cached(
+        cache=TTLCache(maxsize=4096, ttl=60 * 60),
+        key=lambda self, workflow_url: hashkey(workflow_url),
+        lock=threading.Lock(),
+    )
+    def _fetch_workflow_path(self, workflow_url):
+        return self._fetch_github(workflow_url).json()["path"]
+
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
         runs = self._fetch_github(job["run_url"]).json()
-        workflow = self._fetch_github(runs["workflow_url"]).json()
+        workflow_path = self._fetch_workflow_path(runs["workflow_url"])
         repo = runs["repository"]["full_name"]
         meta = {
             # "workflow_name": workflow["name"],
@@ -68,7 +82,7 @@ class GithubClient:
                 "run_attempt": runs["run_attempt"],  # Rerunning a job
                 "event": runs["event"],
                 # It allows querying jobs within the same workflow (e.g. foo.yml)
-                "workflow": workflow["path"].rsplit("/")[-1],
+                "workflow": workflow_path.rsplit("/")[-1],
             },
         }
         if runs.get("pull_requests"):
