@@ -6,6 +6,7 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 import requests
 from sentry_sdk.envelope import Envelope
@@ -41,7 +42,19 @@ class GithubClient:
             # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
+    def _validate_github_url(self, url):
+        parsed = urlparse(url)
+        allowed_hosts = {"api.github.com", "github.com"}
+
+        if parsed.scheme != "https":
+            raise GithubSentryError(f"Invalid GitHub URL scheme: {url}")
+        if not parsed.hostname or parsed.hostname not in allowed_hosts:
+            raise GithubSentryError(f"Invalid GitHub URL host: {url}")
+        if parsed.username or parsed.password:
+            raise GithubSentryError(f"Invalid GitHub URL credentials: {url}")
+
     def _fetch_github(self, url):
+        self._validate_github_url(url)
         headers = {"Authorization": f"token {self.token}"}
 
         req = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
