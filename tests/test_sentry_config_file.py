@@ -115,7 +115,8 @@ class TestSentryConfigCase(TestCase):
 
     @responses.activate
     def test_invalid_github_login(self) -> None:
-        for login in ["a" * 40, "-armenzg", "armenzg/../evil", ""]:
+        # fullmatch rejects a trailing newline, which `$` alone would allow
+        for login in ["a" * 40, "-armenzg", "armenzg/../evil", "", "armenzg\n"]:
             with self.subTest(login=login), self.assertRaises(ValueError):
                 fetch_dsn_for_github_org(login, token, installation_id)
         assert len(responses.calls) == 0
