@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import base64
 import json
 from unittest import mock
 
 import pytest
+import responses
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from src.web_app_handler import WebAppHandler
 
@@ -52,6 +56,38 @@ def test_not_completed_workflow():
     )
     assert reason == "We cannot do anything with this workflow state."
     assert http_code == 200
+
+
+@pytest.fixture
+def gh_app_env(monkeypatch):
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    monkeypatch.delenv("K_SERVICE", raising=False)
+    monkeypatch.setenv("GH_APP_ID", "1")
+    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(pem).decode())
+
+
+@responses.activate
+def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
+    handler = WebAppHandler()
+    # Only Github App mode mints an installation token
+    assert handler.config.gh_app
+    reason, http_code = handler.handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"owner": {"login": "getsentry"}},
+            "workflow_job": skipped_workflow,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "Skipped jobs are not traced."
+    assert http_code == 200
+    assert len(responses.calls) == 0
 
 
 @pytest.mark.skip(reason="Not so important")

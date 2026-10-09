@@ -84,7 +84,6 @@ def test_trace_generation(
     mock_get_uuid,
     jobA_job,
     jobA_runs,
-    jobA_workflow,
     jobA_trace,
     uuid_list,
 ):
@@ -92,10 +91,6 @@ def test_trace_generation(
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
         json=jobA_runs,
-    )
-    responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
-        json=jobA_workflow,
     )
     client = GithubClient(dsn=DSN, token=TOKEN)
     trace = client._generate_trace(jobA_job)
@@ -109,15 +104,10 @@ def test_trace_generation(
 def test_trace_generation_with_failing_steps(
     failure_job,
     failure_runs,
-    failure_workflow,
 ):
     responses.get(
         failure_job["run_url"],
         json=failure_runs,
-    )
-    responses.get(
-        failure_runs["workflow_url"],
-        json=failure_workflow,
     )
 
     client = GithubClient(dsn=DSN, token=TOKEN)
@@ -128,6 +118,32 @@ def test_trace_generation_with_failing_steps(
     assert trace["tags"]["event"] == "push"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/acceptance.yml",
+        ".github/workflows/acceptance.yml@main",
+        "getsentry/.github/.github/workflows/acceptance.yml@refs/heads/main",
+        "getsentry/.github/.github/workflows/acceptance.yml@1595d4b6de6a9e9751fb270a41019ce507d4099e",
+    ],
+)
+@responses.activate
+def test_trace_generation_for_required_workflow(jobA_job, jobA_runs, path):
+    # Fetching a required workflow's `workflow_url` fails with a 422, and `responses`
+    # raises on any request that isn't registered
+    jobA_runs[
+        "workflow_url"
+    ] = "https://api.github.com/repos/getsentry/sentry/actions/required_workflows/1"
+    # A required workflow's path can name the repo it lives in and end in a ref
+    jobA_runs["path"] = path
+    responses.get(jobA_job["run_url"], json=jobA_runs)
+
+    trace = GithubClient(dsn=DSN, token=TOKEN)._generate_trace(jobA_job)
+
+    assert trace["tags"]["workflow"] == "acceptance.yml"
+    assert len(responses.calls) == 1
+
+
 @freeze_time()
 @responses.activate
 @patch("src.github_sdk.get_uuid")
@@ -135,17 +151,12 @@ def test_send_trace(
     mock_get_uuid,
     jobA_job,
     jobA_runs,
-    jobA_workflow,
     uuid_list,
 ):
     mock_get_uuid.side_effect = uuid_list
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
         json=jobA_runs,
-    )
-    responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/workflows/1174556",
-        json=jobA_workflow,
     )
 
     responses.post("https://foo@random.ingest.sentry.io/api/bar/envelope/")

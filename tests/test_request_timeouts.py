@@ -41,9 +41,6 @@ def test_every_request_has_a_timeout(monkeypatch, webhook_event, jobA_runs):
         },
     )
     responses.get(data["workflow_job"]["run_url"], json=jobA_runs)
-    responses.get(
-        jobA_runs["workflow_url"], json={"path": ".github/workflows/acceptance.yml"}
-    )
     responses.post("https://foo@o1.ingest.sentry.io/api/2/envelope/")
 
     handler = WebAppHandler()

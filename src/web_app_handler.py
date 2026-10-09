@@ -29,6 +29,9 @@ class WebAppHandler:
             reason = "Event not supported."
         elif data["action"] != "completed":
             reason = "We cannot do anything with this workflow state."
+        elif data["workflow_job"]["conclusion"] == "skipped":
+            # These are not traced, so don't spend GitHub API calls on them
+            reason = "Skipped jobs are not traced."
         else:
             # For now, this simplifies testing
             if self.dry_run:
@@ -43,7 +46,7 @@ class WebAppHandler:
                     installation_id
                 ) as token:
                     # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                    dsn = fetch_dsn_for_github_org(org, token)
+                    dsn = fetch_dsn_for_github_org(org, token, installation_id)
                     client = GithubClient(
                         token=token,
                         dsn=dsn,
@@ -52,7 +55,7 @@ class WebAppHandler:
                     client.send_trace(data["workflow_job"])
             else:
                 # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                dsn = fetch_dsn_for_github_org(org, token)
+                dsn = fetch_dsn_for_github_org(org, token, installation_id)
                 client = GithubClient(
                     token=self.config.gh.token,
                     dsn=dsn,

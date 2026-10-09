@@ -49,7 +49,7 @@ def main() -> int:
     with GithubAppToken(**web_app.config.gh_app._asdict()).get_token(
         installation_id
     ) as token:
-        dsn = fetch_dsn_for_github_org(org, token)
+        dsn = fetch_dsn_for_github_org(org, token, installation_id)
         client = GithubClient(token=token, dsn=dsn)
         client.send_trace(job)
 

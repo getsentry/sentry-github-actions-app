@@ -4,11 +4,12 @@ import base64
 import logging
 import os
 import re
+import threading
 from configparser import ConfigParser
-from functools import lru_cache
 from urllib.parse import quote
 
 import requests
+from cachetools import TTLCache
 
 from src import REQUEST_TIMEOUT
 
@@ -21,9 +22,27 @@ SENTRY_CONFIG_API_URL = (
 )
 # GitHub logins are up to 39 characters
 GITHUB_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
+# Fetching the config on every webhook exhausts busy orgs' GitHub API rate limit
+DSN_CACHE_TTL_SECONDS = 10 * 60
+# Module globals rather than @cached, whose closure would put every cached DSN in the
+# local variables Sentry captures with an error
+_dsn_cache = TTLCache(maxsize=1024, ttl=DSN_CACHE_TTL_SECONDS)
+_dsn_cache_lock = threading.Lock()
 
 
-def fetch_dsn_for_github_org(org: str, token: str) -> str:
+def fetch_dsn_for_github_org(org: str, token: str, installation_id: int) -> str:
+    # Only serve a DSN to the installation whose token could read it
+    key = (installation_id, org)
+    with _dsn_cache_lock:
+        dsn = _dsn_cache.get(key)
+    if dsn is None:
+        dsn = _fetch_dsn(org, token)
+        with _dsn_cache_lock:
+            _dsn_cache[key] = dsn
+    return dsn
+
+
+def _fetch_dsn(org: str, token: str) -> str:
     # Using the GH app token allows fetching the file in a private repo
     headers = {
         "Accept": "application/vnd.github+json",
