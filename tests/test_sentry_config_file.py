@@ -47,6 +47,20 @@ class TestSentryConfigCase(TestCase):
     def test_fetch_parse_sentry_config_file(self) -> None:
         assert fetch_dsn_for_github_org(org, token) == expected_dsn
 
+    @responses.activate
+    def test_fetch_for_longest_github_login(self) -> None:
+        # GitHub logins are up to 39 characters
+        login = "a" * 38 + "z"
+        responses.get(api_url.replace("{owner}", login), json=sentry_config_file_meta)
+        assert fetch_dsn_for_github_org(login, token) == expected_dsn
+
+    @responses.activate
+    def test_invalid_github_login(self) -> None:
+        for login in ["a" * 40, "-armenzg", "armenzg/../evil", ""]:
+            with self.subTest(login=login), self.assertRaises(ValueError):
+                fetch_dsn_for_github_org(login, token)
+        assert len(responses.calls) == 0
+
     def test_fetch_private_repo(self) -> None:
         pass
 

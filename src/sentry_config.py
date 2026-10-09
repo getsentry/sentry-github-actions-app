@@ -19,7 +19,8 @@ logger.setLevel(LOGGING_LEVEL)
 SENTRY_CONFIG_API_URL = (
     "https://api.github.com/repos/{owner}/.sentry/contents/sentry_config.ini"
 )
-GITHUB_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})$")
+# GitHub logins are up to 39 characters
+GITHUB_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 
 
 def fetch_dsn_for_github_org(org: str, token: str) -> str:
