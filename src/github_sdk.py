@@ -68,8 +68,9 @@ class GithubClient:
                 "event": runs["event"],
                 # It allows querying jobs within the same workflow (e.g. foo.yml)
                 # The run has the path, so there's no need to fetch its workflow, which
-                # fails for required workflows (`workflow_url` 422s)
-                "workflow": runs["path"].rsplit("/")[-1],
+                # fails for required workflows (`workflow_url` 422s). Their path can end
+                # in a ref (e.g. `foo.yml@refs/heads/main`), which isn't part of the name
+                "workflow": runs["path"].split("@", 1)[0].rsplit("/")[-1],
             },
         }
         if runs.get("pull_requests"):

@@ -100,13 +100,24 @@ def test_trace_generation_with_failing_steps(
     assert trace["tags"]["event"] == "push"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/acceptance.yml",
+        ".github/workflows/acceptance.yml@main",
+        "getsentry/.github/.github/workflows/acceptance.yml@refs/heads/main",
+        "getsentry/.github/.github/workflows/acceptance.yml@1595d4b6de6a9e9751fb270a41019ce507d4099e",
+    ],
+)
 @responses.activate
-def test_trace_generation_for_required_workflow(jobA_job, jobA_runs):
+def test_trace_generation_for_required_workflow(jobA_job, jobA_runs, path):
     # Fetching a required workflow's `workflow_url` fails with a 422, and `responses`
     # raises on any request that isn't registered
     jobA_runs[
         "workflow_url"
     ] = "https://api.github.com/repos/getsentry/sentry/actions/required_workflows/1"
+    # A required workflow's path can name the repo it lives in and end in a ref
+    jobA_runs["path"] = path
     responses.get(jobA_job["run_url"], json=jobA_runs)
 
     trace = GithubClient(dsn=DSN, token=TOKEN)._generate_trace(jobA_job)
