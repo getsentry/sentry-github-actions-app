@@ -62,13 +62,13 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_dsn_is_cached_per_installation_and_org(self) -> None:
         other_org_dsn = "https://e0bb9a6e1c4f4d3c9b3a6c2d8f1e7a5b@o1.ingest.sentry.io/2"
-        other_org_api_url = api_url.replace("{owner}", "other_org")
+        other_org_api_url = api_url.replace("{owner}", "other-org")
         responses.get(other_org_api_url, json=config_file_meta(other_org_dsn))
 
         # Every webhook comes with a new token
         assert fetch_dsn_for_github_org(org, "token_1", 1) == expected_dsn
         assert fetch_dsn_for_github_org(org, "token_2", 1) == expected_dsn
-        assert fetch_dsn_for_github_org("other_org", "token_3", 2) == other_org_dsn
+        assert fetch_dsn_for_github_org("other-org", "token_3", 2) == other_org_dsn
         responses.assert_call_count(self.api_url, 1)
         responses.assert_call_count(other_org_api_url, 1)
 
@@ -95,16 +95,31 @@ class TestSentryConfigCase(TestCase):
     @responses.activate
     def test_failed_fetch_does_not_expose_cached_dsns(self) -> None:
         fetch_dsn_for_github_org(org, token, installation_id)
-        responses.get(api_url.replace("{owner}", "other_org"), status=403)
+        responses.get(api_url.replace("{owner}", "other-org"), status=403)
 
         with pytest.raises(HTTPError) as excinfo:
-            fetch_dsn_for_github_org("other_org", token, 2)
+            fetch_dsn_for_github_org("other-org", token, 2)
 
         # Sentry sends every frame's local variables along with an error
         tb = excinfo.tb
         while tb:
             assert expected_dsn not in repr(tb.tb_frame.f_locals)
             tb = tb.tb_next
+
+    @responses.activate
+    def test_fetch_for_longest_github_login(self) -> None:
+        # GitHub logins are up to 39 characters
+        login = "a" * 38 + "z"
+        responses.get(api_url.replace("{owner}", login), json=sentry_config_file_meta)
+        assert fetch_dsn_for_github_org(login, token, installation_id) == expected_dsn
+
+    @responses.activate
+    def test_invalid_github_login(self) -> None:
+        # fullmatch rejects a trailing newline, which `$` alone would allow
+        for login in ["a" * 40, "-armenzg", "armenzg/../evil", "", "armenzg\n"]:
+            with self.subTest(login=login), self.assertRaises(ValueError):
+                fetch_dsn_for_github_org(login, token, installation_id)
+        assert len(responses.calls) == 0
 
     def test_fetch_private_repo(self) -> None:
         pass

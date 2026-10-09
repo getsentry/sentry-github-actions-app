@@ -12,6 +12,7 @@ from requests import HTTPError
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
+from src.github_sdk import GithubSentryError
 
 DSN = "https://foo@random.ingest.sentry.io/bar"
 TOKEN = "irrelevant"
@@ -57,6 +58,23 @@ def test_ensure_raise_error_on_github_api_failure():
         msg
         == "500 Server Error: Internal Server Error for url: https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/repos/getsentry/sentry/actions/runs/2104746951",
+        "http://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
+        "https://api.github.com.example.com/repos/getsentry/sentry/actions/runs/2104746951",
+        "https://api.github.com@example.com/repos/getsentry/sentry/actions/runs/2104746951",
+        "https://github.com/getsentry/sentry/actions/runs/2104746951",
+    ],
+)
+@responses.activate
+def test_fetch_github_only_sends_the_token_to_the_github_api(url):
+    with pytest.raises(GithubSentryError):
+        GithubClient(dsn=DSN, token=TOKEN)._fetch_github(url)
+    assert len(responses.calls) == 0
 
 
 @freeze_time()
