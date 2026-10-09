@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 from unittest import TestCase
 
+import pytest
 import responses
+from requests import HTTPError
 
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
@@ -30,6 +33,15 @@ sentry_config_file_meta = {
 }
 org = "armenzg"
 token = "foo_token"
+installation_id = 1
+
+
+def config_file_meta(dsn: str) -> dict:
+    contents = f"[sentry-github-actions-app]\ndsn = {dsn}\n"
+    return {
+        **sentry_config_file_meta,
+        "content": base64.b64encode(contents.encode()).decode(),
+    }
 
 
 class TestSentryConfigCase(TestCase):
@@ -45,7 +57,54 @@ class TestSentryConfigCase(TestCase):
 
     @responses.activate
     def test_fetch_parse_sentry_config_file(self) -> None:
-        assert fetch_dsn_for_github_org(org, token) == expected_dsn
+        assert fetch_dsn_for_github_org(org, token, installation_id) == expected_dsn
+
+    @responses.activate
+    def test_dsn_is_cached_per_installation_and_org(self) -> None:
+        other_org_dsn = "https://e0bb9a6e1c4f4d3c9b3a6c2d8f1e7a5b@o1.ingest.sentry.io/2"
+        other_org_api_url = api_url.replace("{owner}", "other_org")
+        responses.get(other_org_api_url, json=config_file_meta(other_org_dsn))
+
+        # Every webhook comes with a new token
+        assert fetch_dsn_for_github_org(org, "token_1", 1) == expected_dsn
+        assert fetch_dsn_for_github_org(org, "token_2", 1) == expected_dsn
+        assert fetch_dsn_for_github_org("other_org", "token_3", 2) == other_org_dsn
+        responses.assert_call_count(self.api_url, 1)
+        responses.assert_call_count(other_org_api_url, 1)
+
+        # Another installation has to be able to read the org's config itself
+        responses.replace(responses.GET, self.api_url, status=404)
+        with pytest.raises(HTTPError):
+            fetch_dsn_for_github_org(org, "token_4", 2)
+
+    @responses.activate
+    def test_failed_fetch_is_not_cached(self) -> None:
+        responses.replace(responses.GET, self.api_url, status=403)
+        with pytest.raises(HTTPError):
+            fetch_dsn_for_github_org(org, token, installation_id)
+
+        # e.g. the org's GitHub API rate limit has been reset
+        responses.replace(
+            responses.GET,
+            self.api_url,
+            json=sentry_config_file_meta,
+            status=200,
+        )
+        assert fetch_dsn_for_github_org(org, token, installation_id) == expected_dsn
+
+    @responses.activate
+    def test_failed_fetch_does_not_expose_cached_dsns(self) -> None:
+        fetch_dsn_for_github_org(org, token, installation_id)
+        responses.get(api_url.replace("{owner}", "other_org"), status=403)
+
+        with pytest.raises(HTTPError) as excinfo:
+            fetch_dsn_for_github_org("other_org", token, 2)
+
+        # Sentry sends every frame's local variables along with an error
+        tb = excinfo.tb
+        while tb:
+            assert expected_dsn not in repr(tb.tb_frame.f_locals)
+            tb = tb.tb_next
 
     def test_fetch_private_repo(self) -> None:
         pass

@@ -49,7 +49,6 @@ class GithubClient:
     def _get_extra_metadata(self, job):
         # XXX: This is the slowest call
         runs = self._fetch_github(job["run_url"]).json()
-        workflow = self._fetch_github(runs["workflow_url"]).json()
         repo = runs["repository"]["full_name"]
         meta = {
             # "workflow_name": workflow["name"],
@@ -68,7 +67,10 @@ class GithubClient:
                 "run_attempt": runs["run_attempt"],  # Rerunning a job
                 "event": runs["event"],
                 # It allows querying jobs within the same workflow (e.g. foo.yml)
-                "workflow": workflow["path"].rsplit("/")[-1],
+                # The run has the path, so there's no need to fetch its workflow, which
+                # fails for required workflows (`workflow_url` 422s). Their path can end
+                # in a ref (e.g. `foo.yml@refs/heads/main`), which isn't part of the name
+                "workflow": runs["path"].split("@", 1)[0].rsplit("/")[-1],
             },
         }
         if runs.get("pull_requests"):

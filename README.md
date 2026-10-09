@@ -57,6 +57,8 @@ Steps to follow:
 dsn = https://foo@bar.ingest.sentry.io/foobar
 ```
 
+   - **Note:** The app caches this file, so changes to it can take up to 10 minutes to apply.
+
 4. Install [this GitHub App](https://github.com/apps/sentry-github-app-alpha)
    1. **"All repositories"** - this is the easiest option; all repositories will have telemetry from GitHub Actions sent.
    2. **"Only select repositories"**
