@@ -6,6 +6,9 @@ import logging
 import os
 from typing import NamedTuple
 
+from sentry_sdk import metrics
+from sentry_sdk.utils import BadDsn
+
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
 from src.sentry_config import fetch_dsn_for_github_org
@@ -40,28 +43,36 @@ class WebAppHandler:
             installation_id = data["installation"]["id"]
             org = data["repository"]["owner"]["login"]
 
-            # We are executing in Github App mode
-            if self.config.gh_app:
-                with GithubAppToken(**self.config.gh_app._asdict()).get_token(
-                    installation_id
-                ) as token:
+            try:
+                # We are executing in Github App mode
+                if self.config.gh_app:
+                    with GithubAppToken(**self.config.gh_app._asdict()).get_token(
+                        installation_id
+                    ) as token:
+                        # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+                        dsn = fetch_dsn_for_github_org(org, token, installation_id)
+                        client = GithubClient(
+                            token=token,
+                            dsn=dsn,
+                            dry_run=self.dry_run,
+                        )
+                        client.send_trace(data["workflow_job"])
+                else:
                     # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
                     dsn = fetch_dsn_for_github_org(org, token, installation_id)
                     client = GithubClient(
-                        token=token,
+                        token=self.config.gh.token,
                         dsn=dsn,
                         dry_run=self.dry_run,
                     )
                     client.send_trace(data["workflow_job"])
-            else:
-                # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                dsn = fetch_dsn_for_github_org(org, token, installation_id)
-                client = GithubClient(
-                    token=self.config.gh.token,
-                    dsn=dsn,
-                    dry_run=self.dry_run,
+            except BadDsn as e:
+                # It's up to the org to fix its .sentry repo, so this isn't an error on our end
+                logger.warning(
+                    "%s has an invalid DSN in its sentry_config.ini: %s", org, e
                 )
-                client.send_trace(data["workflow_job"])
+                metrics.count("invalid_dsn", 1, attributes={"owner": org})
+                reason = "The DSN in the org's .sentry/sentry_config.ini is invalid."
 
         return reason, http_code
 
