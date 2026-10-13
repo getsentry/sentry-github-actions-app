@@ -10,6 +10,8 @@ from typing import Generator
 import jwt
 import requests
 
+from src import REQUEST_TIMEOUT
+
 
 class GithubAppToken:
     def __init__(self, private_key, app_id) -> None:
@@ -22,6 +24,7 @@ class GithubAppToken:
         req = requests.post(
             url=f"https://api.github.com/app/installations/{installation_id}/access_tokens",
             headers=self.headers,
+            timeout=REQUEST_TIMEOUT,
         )
         req.raise_for_status()
         resp = req.json()
@@ -32,6 +35,7 @@ class GithubAppToken:
             requests.delete(
                 "https://api.github.com/installation/token",
                 headers={"Authorization": f"token {resp['token']}"},
+                timeout=REQUEST_TIMEOUT,
             )
 
     def get_jwt_token(self, private_key, app_id):

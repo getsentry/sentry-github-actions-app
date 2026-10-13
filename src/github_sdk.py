@@ -11,6 +11,10 @@ import requests
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.utils import format_timestamp
 
+from src import REQUEST_TIMEOUT
+
+GITHUB_API_URL = "https://api.github.com"
+
 
 class GithubSentryError(Exception):
     pass
@@ -40,9 +44,17 @@ class GithubClient:
             self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
 
     def _fetch_github(self, url):
+        # The URL comes from the webhook payload, so only ever send the token to GitHub's API
+        if not url.startswith(f"{GITHUB_API_URL}/"):
+            raise GithubSentryError(f"Not a GitHub API URL: {url}")
         headers = {"Authorization": f"token {self.token}"}
 
-        req = requests.get(url, headers=headers)
+        # Rebuilding the URL on our own base lets CodeQL see that its host is fixed
+        req = requests.get(
+            GITHUB_API_URL + url[len(GITHUB_API_URL) :],
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+        )
         req.raise_for_status()
         return req
 
@@ -134,6 +146,7 @@ class GithubClient:
             self.sentry_project_url,
             data=body.getvalue(),
             headers=headers,
+            timeout=REQUEST_TIMEOUT,
         )
         req.raise_for_status()
         return req
