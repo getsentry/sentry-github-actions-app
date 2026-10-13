@@ -9,7 +9,9 @@ import responses
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from src.sentry_config import SENTRY_CONFIG_API_URL as sentry_config_api_url
 from src.web_app_handler import WebAppHandler
+from tests.test_sentry_config_file import config_file_meta
 
 valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
 
@@ -88,6 +90,43 @@ def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
     assert reason == "Skipped jobs are not traced."
     assert http_code == 200
     assert len(responses.calls) == 0
+
+
+@responses.activate
+@mock.patch("src.web_app_handler.metrics")
+def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
+    responses.post(
+        "https://api.github.com/app/installations/1/access_tokens",
+        json={"token": "irrelevant"},
+    )
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        sentry_config_api_url.replace("{owner}", "getsentry"),
+        json=config_file_meta("dsn: <>"),
+    )
+
+    handler = WebAppHandler()
+    reason, http_code = handler.handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"owner": {"login": "getsentry"}},
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == "The DSN in the org's .sentry/sentry_config.ini is invalid."
+    assert http_code == 200
+    assert [(r.levelname, r.getMessage()) for r in caplog.records] == [
+        (
+            "WARNING",
+            "getsentry has an invalid DSN in its sentry_config.ini: Unsupported scheme 'dsn'",
+        )
+    ]
+    mock_metrics.count.assert_called_once_with(
+        "invalid_dsn", 1, attributes={"owner": "getsentry"}
+    )
 
 
 @pytest.mark.skip(reason="Not so important")

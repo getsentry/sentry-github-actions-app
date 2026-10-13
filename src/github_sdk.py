@@ -9,6 +9,7 @@ from datetime import datetime
 
 import requests
 from sentry_sdk.envelope import Envelope
+from sentry_sdk.utils import Dsn
 from sentry_sdk.utils import format_timestamp
 
 from src import REQUEST_TIMEOUT
@@ -37,11 +38,11 @@ class GithubClient:
     def __init__(self, token, dsn, dry_run=False) -> None:
         self.token = token
         self.dry_run = dry_run
-        if dsn:
-            base_uri, project_id = dsn.rsplit("/", 1)
-            self.sentry_key = base_uri.rsplit("@")[0].rsplit("https://")[1]
-            # '{BASE_URI}/api/{PROJECT_ID}/{ENDPOINT}/'
-            self.sentry_project_url = f"{base_uri}/api/{project_id}/envelope/"
+        # Orgs write the DSN into their .sentry repo by hand; raises BadDsn if it's invalid
+        auth = Dsn(dsn).to_auth()
+        self.sentry_key = auth.public_key
+        # '{SCHEME}://{HOST}{PATH}api/{PROJECT_ID}/envelope/'
+        self.sentry_project_url = auth.get_api_url()
 
     def _fetch_github(self, url):
         # The URL comes from the webhook payload, so only ever send the token to GitHub's API

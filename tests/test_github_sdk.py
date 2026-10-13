@@ -9,12 +9,13 @@ import requests
 import responses
 from freezegun import freeze_time
 from requests import HTTPError
+from sentry_sdk.utils import BadDsn
 from sentry_sdk.utils import format_timestamp
 
 from src.github_sdk import GithubClient
 from src.github_sdk import GithubSentryError
 
-DSN = "https://foo@random.ingest.sentry.io/bar"
+DSN = "https://foo@random.ingest.sentry.io/1234"
 TOKEN = "irrelevant"
 
 # Different versions of Python represent certain errors differently
@@ -43,6 +44,42 @@ def test_initialize_without_setting_token():
         GithubClient(dsn=DSN)
     (msg,) = excinfo.value.args
     assert msg == f"{prepend}__init__() missing 1 required positional argument: 'token'"
+
+
+@pytest.mark.parametrize(
+    "dsn, sentry_project_url",
+    [
+        (DSN, "https://random.ingest.sentry.io/api/1234/envelope/"),
+        (
+            "https://foo@o1.ingest.us.sentry.io/1234",
+            "https://o1.ingest.us.sentry.io/api/1234/envelope/",
+        ),
+        (
+            "http://foo:secret@sentry.example.com:9000/sentry/1234",
+            "http://sentry.example.com:9000/sentry/api/1234/envelope/",
+        ),
+    ],
+)
+def test_initialize_with_dsn(dsn, sentry_project_url):
+    client = GithubClient(dsn=dsn, token=TOKEN)
+    assert client.sentry_key == "foo"
+    assert client.sentry_project_url == sentry_project_url
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        # Seen in an org's sentry_config.ini
+        "dsn: <>",
+        "",
+        "https://random.ingest.sentry.io/1234",
+        "https://foo@random.ingest.sentry.io/",
+        "https://foo@random.ingest.sentry.io/1234/",
+    ],
+)
+def test_initialize_with_invalid_dsn(dsn):
+    with pytest.raises(BadDsn):
+        GithubClient(dsn=dsn, token=TOKEN)
 
 
 @responses.activate
@@ -159,7 +196,7 @@ def test_send_trace(
         json=jobA_runs,
     )
 
-    responses.post("https://foo@random.ingest.sentry.io/api/bar/envelope/")
+    responses.post("https://random.ingest.sentry.io/api/1234/envelope/")
 
     client = GithubClient(dsn=DSN, token=TOKEN)
     resp = client.send_trace(jobA_job)

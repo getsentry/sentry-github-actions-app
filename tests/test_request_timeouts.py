@@ -41,7 +41,7 @@ def test_every_request_has_a_timeout(monkeypatch, webhook_event, jobA_runs):
         },
     )
     responses.get(data["workflow_job"]["run_url"], json=jobA_runs)
-    responses.post("https://foo@o1.ingest.sentry.io/api/2/envelope/")
+    responses.post("https://o1.ingest.sentry.io/api/2/envelope/")
 
     handler = WebAppHandler()
     assert handler.config.gh_app
