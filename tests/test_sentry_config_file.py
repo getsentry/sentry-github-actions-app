@@ -7,6 +7,7 @@ import pytest
 import responses
 from requests import HTTPError
 
+from src.sentry_config import fetch_config_for_github_org
 from src.sentry_config import fetch_dsn_for_github_org
 from src.sentry_config import SENTRY_CONFIG_API_URL as api_url
 
@@ -129,3 +130,31 @@ class TestSentryConfigCase(TestCase):
 
     def test_bad_contents(self) -> None:
         pass
+
+
+@responses.activate
+def test_commit_workflows():
+    contents = (
+        "[sentry-github-actions-app]\n"
+        f"dsn = {expected_dsn}\n"
+        "commit_workflows = backend.yml, acceptance.yml,\n"
+        "  frontend.yml\n"
+    )
+    responses.get(
+        api_url.replace("{owner}", org),
+        json={
+            **sentry_config_file_meta,
+            "content": base64.b64encode(contents.encode()).decode(),
+        },
+    )
+    config = fetch_config_for_github_org(org, token, installation_id)
+    assert config.dsn == expected_dsn
+    assert config.commit_workflows == {"backend.yml", "acceptance.yml", "frontend.yml"}
+
+
+@responses.activate
+def test_commit_workflows_default_to_every_workflow():
+    responses.get(api_url.replace("{owner}", org), json=sentry_config_file_meta)
+    assert fetch_config_for_github_org(
+        org, token, installation_id
+    ).commit_workflows == (frozenset())

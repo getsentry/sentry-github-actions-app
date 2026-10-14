@@ -11,11 +11,16 @@ from sentry_sdk.utils import BadDsn
 
 from .github_app import GithubAppToken
 from .github_sdk import GithubClient
-from src.sentry_config import fetch_dsn_for_github_org
+from src.sentry_config import fetch_config_for_github_org
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
+
+
+def commit_traces_enabled() -> bool:
+    # Off by default: it costs one GitHub API call per successful workflow run
+    return os.environ.get("COMMIT_TRACES_ENABLED", "").lower() in ("1", "true")
 
 
 class WebAppHandler:
@@ -27,54 +32,64 @@ class WebAppHandler:
         # We return 200 to make webhook not turn red since everything got processed well
         http_code = 200
         reason = "OK"
+        event = headers["X-GitHub-Event"]
 
-        if headers["X-GitHub-Event"] != "workflow_job":
-            reason = "Event not supported."
-        elif data["action"] != "completed":
-            reason = "We cannot do anything with this workflow state."
-        elif data["workflow_job"]["conclusion"] == "skipped":
-            # These are not traced, so don't spend GitHub API calls on them
-            reason = "Skipped jobs are not traced."
-        else:
-            # For now, this simplifies testing
-            if self.dry_run:
-                return reason, http_code
-
-            installation_id = data["installation"]["id"]
-            org = data["repository"]["owner"]["login"]
-
-            try:
-                # We are executing in Github App mode
-                if self.config.gh_app:
-                    with GithubAppToken(**self.config.gh_app._asdict()).get_token(
-                        installation_id
-                    ) as token:
-                        # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                        dsn = fetch_dsn_for_github_org(org, token, installation_id)
-                        client = GithubClient(
-                            token=token,
-                            dsn=dsn,
-                            dry_run=self.dry_run,
-                        )
-                        client.send_trace(data["workflow_job"])
-                else:
-                    # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
-                    dsn = fetch_dsn_for_github_org(org, token, installation_id)
-                    client = GithubClient(
-                        token=self.config.gh.token,
-                        dsn=dsn,
-                        dry_run=self.dry_run,
-                    )
-                    client.send_trace(data["workflow_job"])
-            except BadDsn as e:
-                # It's up to the org to fix its .sentry repo, so this isn't an error on our end
-                logger.warning(
-                    "%s has an invalid DSN in its sentry_config.ini: %s", org, e
+        if event == "workflow_job":
+            if data["action"] != "completed":
+                reason = "We cannot do anything with this workflow state."
+            elif data["workflow_job"]["conclusion"] == "skipped":
+                # These are not traced, so don't spend GitHub API calls on them
+                reason = "Skipped jobs are not traced."
+            elif not self.dry_run:
+                reason = self._send(
+                    data, lambda client, _: client.send_trace(data["workflow_job"])
                 )
-                metrics.count("invalid_dsn", 1, attributes={"owner": org})
-                reason = "The DSN in the org's .sentry/sentry_config.ini is invalid."
+        elif event == "workflow_run":
+            if not commit_traces_enabled():
+                reason = "Commit traces are not enabled."
+            elif data["action"] != "completed":
+                reason = "We cannot do anything with this workflow state."
+            elif data["workflow_run"]["conclusion"] != "success":
+                # Only a successful run can turn its commit green, so don't spend
+                # GitHub API calls on the others
+                reason = "Only successful workflow runs can turn a commit green."
+            elif not self.dry_run:
+                reason = self._send(
+                    data,
+                    lambda client, config: client.send_commit_trace(
+                        data["workflow_run"], config.commit_workflows
+                    ),
+                )
+        else:
+            reason = "Event not supported."
 
         return reason, http_code
+
+    def _send(self, data, send) -> str:
+        installation_id = data["installation"]["id"]
+        org = data["repository"]["owner"]["login"]
+
+        try:
+            # We are executing in Github App mode
+            if self.config.gh_app:
+                with GithubAppToken(**self.config.gh_app._asdict()).get_token(
+                    installation_id
+                ) as token:
+                    self._send_with_token(token, installation_id, org, send)
+            else:
+                self._send_with_token(self.config.gh.token, installation_id, org, send)
+        except BadDsn as e:
+            # It's up to the org to fix its .sentry repo, so this isn't an error on our end
+            logger.warning("%s has an invalid DSN in its sentry_config.ini: %s", org, e)
+            metrics.count("invalid_dsn", 1, attributes={"owner": org})
+            return "The DSN in the org's .sentry/sentry_config.ini is invalid."
+        return "OK"
+
+    def _send_with_token(self, token, installation_id, org, send):
+        # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
+        config = fetch_config_for_github_org(org, token, installation_id)
+        client = GithubClient(token=token, dsn=config.dsn, dry_run=self.dry_run)
+        send(client, config)
 
     def valid_signature(self, body, headers):
         if not self.config.gh.webhook_secret:

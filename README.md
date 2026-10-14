@@ -68,6 +68,25 @@ dsn = https://foo@bar.ingest.sentry.io/foobar
 
 **NOTE**: In other words, we won't be able to access any of your code.
 
+### Commit to green (optional)
+
+Job traces tell you how long each job took, but not how long a commit waited for CI to go green. The app can also send one `ci.commit` transaction per green commit, lasting from its first workflow run being created until the last of its workflow runs passed (re-runs included, tagged `rerun:true`).
+
+To turn it on:
+
+1. Set `COMMIT_TRACES_ENABLED=true` on the deployment
+2. Subscribe the GitHub App to **Workflow run** events (no new permissions needed)
+3. Optionally, list the workflows that gate a commit in `sentry_config.ini`. By default every workflow run for the commit has to pass.
+
+```ini
+[sentry-github-actions-app]
+dsn = https://foo@bar.ingest.sentry.io/foobar
+; Workflow files that have to pass for a commit to count as green
+commit_workflows = backend.yml, frontend.yml, acceptance.yml
+```
+
+Then chart e.g. `p50(transaction.duration)` for `transaction.op:ci.commit event:push branch:master` (master) or `event:pull_request` (PRs). Each successful run of a listed workflow costs one GitHub API call; failed and skipped runs cost none.
+
 Give us feedback in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
 
 ## Local development

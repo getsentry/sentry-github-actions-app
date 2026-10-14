@@ -1,0 +1,63 @@
+{
+  "action": "completed",
+  "installation": {
+    "id": 1
+  },
+  "repository": {
+    "full_name": "getsentry/sentry",
+    "owner": {
+      "login": "getsentry"
+    }
+  },
+  "workflow_run": {
+    "id": 38468300492,
+    "name": "backend",
+    "path": ".github/workflows/backend.yml",
+    "head_branch": "master",
+    "head_sha": "00450fe2d1b2ca30b58922ebd3ad7dce1b0a4293",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-10-13T21:08:21Z",
+    "updated_at": "2026-10-13T21:26:10Z",
+    "run_started_at": "2026-10-13T21:08:21Z",
+    "html_url": "https://github.com/getsentry/sentry/actions/runs/38468300492",
+    "pull_requests": [
+      {
+        "url": "https://api.github.com/repos/some-fork/sentry/pulls/1",
+        "id": 1,
+        "number": 1,
+        "head": {
+          "ref": "master",
+          "sha": "886f2b5e705d56986d7cd3e18c5edb2453dea5a3",
+          "repo": {
+            "id": 873328,
+            "url": "https://api.github.com/repos/getsentry/sentry",
+            "name": "sentry"
+          }
+        },
+        "base": {
+          "ref": "master",
+          "sha": "0000000000000000000000000000000000000000",
+          "repo": {
+            "id": 1,
+            "url": "https://api.github.com/repos/some-fork/sentry",
+            "name": "sentry"
+          }
+        }
+      }
+    ],
+    "head_commit": {
+      "id": "00450fe2d1b2ca30b58922ebd3ad7dce1b0a4293",
+      "timestamp": "2026-10-13T21:08:16Z",
+      "author": {
+        "name": "Jane Doe",
+        "email": "jane@example.com"
+      }
+    },
+    "repository": {
+      "full_name": "getsentry/sentry"
+    }
+  }
+}
