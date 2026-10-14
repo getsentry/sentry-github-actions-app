@@ -183,3 +183,33 @@ def test_handle_event_with_secret(monkeypatch, webhook_event):
     )
     assert reason == "OK"
     assert http_code == 200
+
+
+@responses.activate
+def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
+    with open("tests/fixtures/commit/webhook_payload.json") as f:
+        payload = json.load(f)
+    with open("tests/fixtures/commit/runs.json") as f:
+        runs = json.load(f)
+    monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
+    responses.post(
+        "https://api.github.com/app/installations/1/access_tokens",
+        json={"token": "irrelevant"},
+    )
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        sentry_config_api_url.replace("{owner}", "getsentry"),
+        json=config_file_meta("https://foo@random.ingest.sentry.io/1234"),
+    )
+    runs_url = responses.get(
+        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=runs
+    )
+    envelope = responses.post("https://random.ingest.sentry.io/api/1234/envelope/")
+
+    reason, http_code = WebAppHandler().handle_event(
+        data=payload, headers={"X-GitHub-Event": "workflow_run"}
+    )
+
+    assert (reason, http_code) == ("OK", 200)
+    assert runs_url.call_count == 1
+    assert envelope.call_count == 1

@@ -8,8 +8,8 @@ from src import sentry_config
 
 
 @pytest.fixture(autouse=True)
-def clear_dsn_cache():
-    sentry_config._dsn_cache.clear()
+def clear_config_cache():
+    sentry_config._config_cache.clear()
 
 
 @pytest.fixture
