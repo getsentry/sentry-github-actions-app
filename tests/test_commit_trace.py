@@ -54,7 +54,7 @@ def test_commit_trace(workflow_run, commit_runs):
     assert trace["type"] == "transaction"
     assert trace["transaction"] == "commit to green"
     assert trace["contexts"]["trace"]["op"] == "ci.commit"
-    # From the first workflow run being created to the last one completing
+    # The slowest workflow run, from its latest attempt starting to completing
     assert trace["start_timestamp"] == "2026-10-13T21:08:21Z"
     assert trace["timestamp"] == "2026-10-13T21:26:10Z"
     assert trace["tags"] == {
@@ -65,7 +65,7 @@ def test_commit_trace(workflow_run, commit_runs):
         "event": "push",
         "workflow_runs": 10,
         "rerun": "false",
-        "last_workflow": "backend.yml",
+        "slowest_workflow": "backend.yml",
     }
     # Forks' PRs don't make a push to master look like a PR
     assert "pr" not in trace["contexts"]["trace"]["data"]
@@ -116,13 +116,39 @@ def test_skipped_runs_do_not_block_green(workflow_run, commit_runs):
 def test_rerun_turning_the_commit_green(commit_runs):
     acceptance = _run(commit_runs, ACCEPTANCE_RUN_ID)
     acceptance["run_attempt"] = 2
-    acceptance["updated_at"] = "2026-10-13T21:40:00Z"
+    acceptance["run_started_at"] = "2026-10-13T21:50:00Z"
+    acceptance["updated_at"] = "2026-10-13T22:15:00Z"
 
     trace = _generate_commit_trace(copy.deepcopy(acceptance), commit_runs)
 
-    assert trace["timestamp"] == "2026-10-13T21:40:00Z"
+    # The wait before the re-run doesn't count, only the re-run itself
+    assert trace["start_timestamp"] == "2026-10-13T21:50:00Z"
+    assert trace["timestamp"] == "2026-10-13T22:15:00Z"
     assert trace["tags"]["rerun"] == "true"
-    assert trace["tags"]["last_workflow"] == "acceptance.yml"
+    assert trace["tags"]["slowest_workflow"] == "acceptance.yml"
+
+
+def test_only_the_latest_run_of_a_workflow_counts(workflow_run, commit_runs):
+    # backend.yml got re-triggered days later, and that run is still going
+    newer = copy.deepcopy(workflow_run)
+    newer.update(
+        id=BACKEND_RUN_ID + 1,
+        status="in_progress",
+        conclusion=None,
+        run_started_at="2026-10-16T09:00:00Z",
+        updated_at="2026-10-16T09:01:00Z",
+    )
+    commit_runs["workflow_runs"].append(newer)
+    assert _generate_commit_trace(workflow_run, commit_runs) is None
+
+    newer.update(
+        status="completed", conclusion="success", updated_at="2026-10-16T09:12:00Z"
+    )
+    trace = _generate_commit_trace(newer, commit_runs)
+    assert trace["tags"]["workflow_runs"] == 10
+    assert trace["tags"]["slowest_workflow"] == "backend.yml"
+    assert trace["start_timestamp"] == "2026-10-16T09:00:00Z"
+    assert trace["timestamp"] == "2026-10-16T09:12:00Z"
 
 
 def test_commit_workflows_limit_which_runs_count(workflow_run, commit_runs):

@@ -266,9 +266,10 @@ def _generate_commit_trace(
     """Build the commit transaction, or return None if this run shouldn't send one.
 
     Only the webhook for the run that turned the commit green sends the trace:
-    every run must be completed and passing, and ``workflow_run`` must be the one
-    that completed last. Each webhook reads the same list of runs, so when several
-    runs finish at once, they agree on which one is last.
+    every workflow's latest run must be completed and passing, and
+    ``workflow_run`` must be the one that completed last. Each webhook reads the
+    same list of runs, so when several runs finish at once, they agree on which
+    one is last.
     """
     runs = runs_response.get("workflow_runs", [])
     if runs_response.get("total_count", len(runs)) > len(runs):
@@ -280,8 +281,9 @@ def _generate_commit_trace(
         return None
     if commit_workflows:
         runs = [run for run in runs if _workflow_file(run) in commit_workflows]
+    runs = _latest_run_per_workflow(runs)
     if not any(run["id"] == workflow_run["id"] for run in runs):
-        # GitHub hasn't listed this run yet
+        # GitHub hasn't listed this run yet, or a newer run of its workflow exists
         return None
     if any(run["status"] != "completed" for run in runs):
         # The last run to complete will trace the commit
@@ -294,19 +296,41 @@ def _generate_commit_trace(
     if last_run["id"] != workflow_run["id"]:
         return None
 
-    return _commit_transaction(workflow_run, runs, last_run)
+    return _commit_transaction(workflow_run, runs)
 
 
-def _commit_transaction(workflow_run: dict, runs: list, last_run: dict) -> dict:
+def _latest_run_per_workflow(runs: list) -> list:
+    # A workflow can run more than once for a commit (e.g. a PR's checks get
+    # re-triggered days later); only its latest run decides whether it's green
+    latest = {}
+    for run in runs:
+        path = run["path"]
+        if path not in latest or run["id"] > latest[path]["id"]:
+            latest[path] = run
+    return list(latest.values())
+
+
+def _run_duration(run: dict) -> float:
+    return (
+        _parse_ts(run["updated_at"]) - _parse_ts(run["run_started_at"])
+    ).total_seconds()
+
+
+def _parse_ts(ts: str) -> datetime:
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def _commit_transaction(workflow_run: dict, runs: list) -> dict:
     repo = workflow_run["repository"]["full_name"]
     sha = workflow_run["head_sha"]
     event = workflow_run["event"]
     # Deterministic, so a redelivered webhook sends a duplicate that's easy to spot
     trace_id = get_uuid_from_string(f"repo:{repo}commit:{sha}event:{event}")
     span_id = trace_id[:16]
-    # Workflow runs are created as soon as GitHub gets the push or PR update.
-    # head_commit.timestamp is when the commit was authored, which can be much earlier.
-    start = min(run["created_at"] for run in runs)
+    # The commit is green once its slowest workflow is. Measuring that run from
+    # when its latest attempt started (rather than from the commit's first run)
+    # keeps the wait before a re-run, or a re-trigger days later, out of it.
+    slowest = max(runs, key=lambda run: (_run_duration(run), run["id"]))
 
     tags = {
         "ci_result": "green",
@@ -315,9 +339,8 @@ def _commit_transaction(workflow_run: dict, runs: list, last_run: dict) -> dict:
         "commit": sha,
         "event": event,
         "workflow_runs": len(runs),
-        # Time to green includes waiting for someone to re-run a failed workflow
         "rerun": str(any(run.get("run_attempt", 1) > 1 for run in runs)).lower(),
-        "last_workflow": _workflow_file(last_run),
+        "slowest_workflow": _workflow_file(slowest),
     }
     data = {"commit": f"https://github.com/{repo}/commit/{sha}"}
     # A push to master also lists forks' PRs whose head is our master, so only keep
@@ -351,8 +374,8 @@ def _commit_transaction(workflow_run: dict, runs: list, last_run: dict) -> dict:
         },
         "user": author,
         "tags": tags,
-        "start_timestamp": start,
-        "timestamp": last_run["updated_at"],
+        "start_timestamp": slowest["run_started_at"],
+        "timestamp": slowest["updated_at"],
         "spans": [
             {
                 "op": _workflow_file(run),
@@ -360,8 +383,7 @@ def _commit_transaction(workflow_run: dict, runs: list, last_run: dict) -> dict:
                 "parent_span_id": span_id,
                 "span_id": get_uuid()[:16],
                 "trace_id": trace_id,
-                # created_at rather than run_started_at, so queueing counts
-                "start_timestamp": run["created_at"],
+                "start_timestamp": run["run_started_at"],
                 "timestamp": run["updated_at"],
                 "status": "ok",
                 "data": {
@@ -370,7 +392,7 @@ def _commit_transaction(workflow_run: dict, runs: list, last_run: dict) -> dict:
                     "conclusion": run["conclusion"],
                 },
             }
-            for run in sorted(runs, key=lambda run: run["created_at"])
+            for run in sorted(runs, key=lambda run: run["run_started_at"])
         ],
     }
 
