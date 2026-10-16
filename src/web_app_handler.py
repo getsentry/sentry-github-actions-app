@@ -86,7 +86,6 @@ class WebAppHandler:
         return "OK"
 
     def _send_with_token(self, token, installation_id, org, send):
-        # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
         config = fetch_config_for_github_org(org, token, installation_id)
         client = GithubClient(token=token, dsn=config.dsn, dry_run=self.dry_run)
         send(client, config)
