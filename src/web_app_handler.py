@@ -41,7 +41,7 @@ class WebAppHandler:
                 # These are not traced, so don't spend GitHub API calls on them
                 reason = "Skipped jobs are not traced."
             elif not self.dry_run:
-                reason = self._send(
+                reason, http_code = self._send(
                     data, lambda client, _: client.send_trace(data["workflow_job"])
                 )
         elif event == "workflow_run":
@@ -54,7 +54,7 @@ class WebAppHandler:
                 # GitHub API calls on the others
                 reason = "Only successful workflow runs can turn a commit green."
             elif not self.dry_run:
-                reason = self._send(
+                reason, http_code = self._send(
                     data,
                     lambda client, config: client.send_commit_trace(
                         data["workflow_run"], config.commit_workflows
@@ -65,9 +65,15 @@ class WebAppHandler:
 
         return reason, http_code
 
-    def _send(self, data, send) -> str:
-        installation_id = data["installation"]["id"]
+    def _send(self, data, send) -> tuple[str, int]:
+        # Only GitHub App webhooks carry an installation; repository webhooks don't
+        installation_id = (data.get("installation") or {}).get("id")
         org = data["repository"]["owner"]["login"]
+        if self.config.gh_app and installation_id is None:
+            return (
+                "The payload has no installation. Send it from the GitHub App's webhook.",
+                400,
+            )
 
         try:
             # We are executing in Github App mode
@@ -82,8 +88,8 @@ class WebAppHandler:
             # It's up to the org to fix its .sentry repo, so this isn't an error on our end
             logger.warning("%s has an invalid DSN in its sentry_config.ini: %s", org, e)
             metrics.count("invalid_dsn", 1, attributes={"owner": org})
-            return "The DSN in the org's .sentry/sentry_config.ini is invalid."
-        return "OK"
+            return "The DSN in the org's .sentry/sentry_config.ini is invalid.", 200
+        return "OK", 200
 
     def _send_with_token(self, token, installation_id, org, send):
         # Once the Sentry org has a .sentry repo we can remove the DSN from the deployment
@@ -140,7 +146,7 @@ def get_gh_app_private_key():
             ).payload.data.decode("UTF-8"),
         )
     else:
-        # This block only applies for development since we are not executing on GCP
+        # Outside Cloud Run, or when the variable is set, read the key from the environment
         private_key = base64.b64decode(os.environ["GH_APP_PRIVATE_KEY"])
     return private_key
 

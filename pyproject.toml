@@ -6,10 +6,10 @@ authors = [
     {name = "Armen Zambrano G.", email = "armenzg@sentry.io"},
 ]
 license-expression = "MIT"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [project.urls]
-Homepage = "https://github.com/getsentry/github-actions-app"
+Homepage = "https://github.com/getsentry/sentry-github-actions-app"
 
 [tool.pytest.ini_options]
 # -ra:  Show extra test summary info: (a)ll except passed

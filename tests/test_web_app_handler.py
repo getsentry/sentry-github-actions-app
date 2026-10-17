@@ -213,3 +213,47 @@ def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
     assert (reason, http_code) == ("OK", 200)
     assert runs_url.call_count == 1
     assert envelope.call_count == 1
+
+
+@responses.activate
+def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job):
+    handler = WebAppHandler()
+    # Repository webhooks have no installation, so no installation token can be minted
+    reason, http_code = handler.handle_event(
+        data={
+            "action": "completed",
+            "repository": {"owner": {"login": "getsentry"}},
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == (
+        "The payload has no installation. Send it from the GitHub App's webhook."
+    )
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+@mock.patch("src.web_app_handler.metrics")
+def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
+    monkeypatch.delenv("GH_APP_ID", raising=False)
+    monkeypatch.setenv("GH_TOKEN", "pat")
+    responses.get(
+        sentry_config_api_url.replace("{owner}", "getsentry"),
+        json=config_file_meta("dsn: <>"),
+    )
+
+    handler = WebAppHandler()
+    reason, http_code = handler.handle_event(
+        data={
+            "action": "completed",
+            "repository": {"owner": {"login": "getsentry"}},
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == "The DSN in the org's .sentry/sentry_config.ini is invalid."
+    assert http_code == 200
+    assert responses.calls[0].request.headers["Authorization"] == "token pat"
