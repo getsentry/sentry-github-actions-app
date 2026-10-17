@@ -85,52 +85,12 @@ dsn = https://foo@bar.ingest.sentry.io/foobar
 commit_workflows = backend.yml, frontend.yml, acceptance.yml
 ```
 
-Then chart e.g. `p50(transaction.duration)` for `transaction.op:ci.commit event:push branch:master` (master) or `event:pull_request` (PRs). Each successful run of a listed workflow costs one GitHub API call; failed and skipped runs cost none.
+Then chart, for example, `p50(transaction.duration)` for `transaction.op:ci.commit event:push branch:master` (master) or `event:pull_request` (PRs). Each successful run of a listed workflow costs one GitHub API call; failed and skipped runs cost none.
 
-Give us feedback in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46).
+## Get help
 
-## Local development
+Report bugs and feedback in [issue #46](https://github.com/getsentry/sentry-github-actions-app/issues/46). To develop or deploy the app, start at [AGENTS.md](AGENTS.md).
 
-Prerequisites:
+## License
 
-- ngrok (for local dev)
-
-Set up:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install wheel
-pip install -r requirements.txt -r requirements-dev.txt
-```
-
-You can ingest a single job without webhooks by using the cli. For example:
-
-```shell
-# This is a normal URL of a job on GitHub
-python3 cli.py https://github.com/getsentry/sentry/runs/5759197422?check_suite_focus=true
-# From test fixture
-python3 cli.py tests/fixtures/jobA/job.json
-```
-
-Steps to ingest events from a repository:
-
-- Install ngrok, authenticate and start it up (`ngrok http 5001`)
-  - Take note of the URL
-- Create a GitHub webhook for the repo you want to analyze
-  - Choose `Workflow jobs` events & make sure to choose `application/json`
-  - Put Ngrok's URL there
-
-Table of commands:
-
-| Command                            | Description                                    |
-| ---------------------------------- | ---------------------------------------------- |
-| flask run -p 5001                  | Start the Flask app on <http://localhost:5001> |
-| pre-commit install                 | Install pre-commit hooks                       |
-| tox                                | Run tests in isolated environment              |
-| pytest                             | Run Python tests                               |
-| pytest --cov=src --cov-report=html | Generate code coverage.                        |
-
-## Sentry staff info
-
-Google Cloud Build will automatically build a Docker image when the code merges on `main`. Log-in to Google Cloud Run and deploy the latest image.
+MIT. See [LICENSE](LICENSE).

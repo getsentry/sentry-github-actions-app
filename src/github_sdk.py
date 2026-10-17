@@ -65,7 +65,6 @@ class GithubClient:
         runs = self._fetch_github(job["run_url"]).json()
         repo = runs["repository"]["full_name"]
         meta = {
-            # "workflow_name": workflow["name"],
             "author": runs["head_commit"]["author"],
             # https://getsentry.atlassian.net/browse/TET-22
             # Tags are not linkified externally, plain text data can be selected in browsers and opened
