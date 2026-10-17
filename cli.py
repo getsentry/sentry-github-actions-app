@@ -11,6 +11,7 @@ import os
 
 import requests
 
+from src import REQUEST_TIMEOUT
 from src.github_app import GithubAppToken
 from src.github_sdk import GithubClient
 from src.sentry_config import fetch_dsn_for_github_org
@@ -20,14 +21,19 @@ logging.getLogger().setLevel(os.environ.get("LOGGING_LEVEL", "INFO"))
 logging.basicConfig()
 
 
-def _fetch_job(url: str) -> tuple(str, dict):
-    _, _, _, org, repo, _, run_id = url.split("?")[0].split("/")
+def _parse_job_url(url: str) -> tuple[str, str, str]:
+    _, _, _, org, repo, _, job_id = url.split("?")[0].split("/")
+    return org, repo, job_id
+
+
+def _fetch_job(org: str, repo: str, job_id: str, token: str) -> dict:
     req = requests.get(
-        f"https://api.github.com/repos/{org}/{repo}/actions/jobs/{run_id}",
+        f"https://api.github.com/repos/{org}/{repo}/actions/jobs/{job_id}",
+        headers={"Authorization": f"token {token}"},
+        timeout=REQUEST_TIMEOUT,
     )
     req.raise_for_status()
-    job = req.json()
-    return org, job
+    return req.json()
 
 
 def main() -> int:
@@ -36,7 +42,7 @@ def main() -> int:
     parser.add_argument("--installation-id")
     args = parser.parse_args()
 
-    org, job = _fetch_job(args.url)
+    org, repo, job_id = _parse_job_url(args.url)
     if org != "getsentry":
         assert (
             args.installation_id is not None
@@ -49,6 +55,7 @@ def main() -> int:
     with GithubAppToken(**web_app.config.gh_app._asdict()).get_token(
         installation_id
     ) as token:
+        job = _fetch_job(org, repo, job_id, token)
         dsn = fetch_dsn_for_github_org(org, token, installation_id)
         client = GithubClient(token=token, dsn=dsn)
         client.send_trace(job)
