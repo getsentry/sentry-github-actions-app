@@ -1,0 +1,34 @@
+steps:
+  # build
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "$_REPO_URL/$_CONTAINER_NAME"
+      - "."
+
+  # push to artifact repo
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "$_REPO_URL/$_CONTAINER_NAME"
+
+  # deploy on cloud run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - run
+      - deploy
+      - --region
+      - $_DEPLOY_REGION
+      - --project
+      - $_DEPLOY_PROJECT
+      - --image=$_REPO_URL/$_CONTAINER_NAME:latest
+      - $_SERVICE_NAME
+
+substitutions:
+  _SERVICE_NAME: github-actions-app
+  _CONTAINER_NAME: github-actions-app
+  _REPO_URL: gcr.io/sentry-dev-tooling
+  _DEPLOY_REGION: us-central1
+  _DEPLOY_PROJECT: sentry-dev-tooling
