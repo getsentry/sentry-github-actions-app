@@ -1,6 +1,6 @@
 blinker==1.7.0
 cachetools==5.3.2
-certifi==2023.11.17
+certifi==2026.10.19
 cffi==1.16.0
 charset-normalizer==2.0.12
 click==8.1.7
