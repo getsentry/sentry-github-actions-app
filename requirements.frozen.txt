@@ -11,7 +11,7 @@ google-auth==2.25.2
 google-cloud-secret-manager==2.11.0
 googleapis-common-protos==1.62.0
 grpc-google-iam-v1==0.13.0
-grpcio==1.60.0
+grpcio==1.84.1
 grpcio-status==1.60.0
 idna==3.6
 itsdangerous==2.1.2
@@ -26,5 +26,6 @@ PyJWT==2.4.0
 requests==2.27.1
 rsa==4.9
 sentry-sdk==2.71.0
+typing-extensions==4.15.0
 urllib3==1.26.18
 Werkzeug==3.0.1
