@@ -71,6 +71,7 @@ def gh_app_env(monkeypatch):
     monkeypatch.delenv("K_SERVICE", raising=False)
     monkeypatch.setenv("GH_APP_ID", "1")
     monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(pem).decode())
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
 
 
 @responses.activate
@@ -82,7 +83,10 @@ def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
         data={
             "action": "completed",
             "installation": {"id": 1},
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": skipped_workflow,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -110,7 +114,10 @@ def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
         data={
             "action": "completed",
             "installation": {"id": 1},
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -143,10 +150,21 @@ def test_missing_workflow_job(monkeypatch):
     assert msg == "workflow_job"
 
 
-def test_valid_signature_no_secret(monkeypatch):
+def test_no_secret_rejects_every_payload(monkeypatch, webhook_event):
     monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
     handler = WebAppHandler()
-    assert handler.valid_signature(body={}, headers={}) == True
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
+    )
+
+
+def test_missing_signature_is_invalid(monkeypatch, webhook_event):
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    handler = WebAppHandler()
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(), headers={}
+    )
 
 
 def test_valid_signature(monkeypatch, webhook_event):
@@ -222,7 +240,10 @@ def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job)
     reason, http_code = handler.handle_event(
         data={
             "action": "completed",
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -248,7 +269,10 @@ def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
     reason, http_code = handler.handle_event(
         data={
             "action": "completed",
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -257,3 +281,71 @@ def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
     assert reason == "The DSN in the org's .sentry/sentry_config.ini is invalid."
     assert http_code == 200
     assert responses.calls[0].request.headers["Authorization"] == "token pat"
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "owner,run_url",
+    (
+        # The DSN would come from attacker's .sentry repo
+        ("attacker", "https://api.github.com/repos/getsentry/sentry/actions/runs/1"),
+        ("getsentry", "https://api.github.com/repos/getsentry/private/actions/runs/1"),
+        (
+            "getsentry",
+            "https://api.github.com/repos/getsentry/sentry/actions/runs/1/../../../private/actions/runs/1",
+        ),
+        ("getsentry", "https://api.github.com/repos/getsentry/sentry/actions/secrets"),
+    ),
+)
+def test_job_outside_the_payload_repository_is_rejected(
+    gh_app_env, jobA_job, owner, run_url
+):
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"full_name": "getsentry/sentry", "owner": {"login": owner}},
+            "workflow_job": {**jobA_job, "run_url": run_url},
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "full_name", ("getsentry/../victim/private", "getsentry/..", "getsentry/a/b")
+)
+def test_repository_name_with_a_path_is_rejected(gh_app_env, jobA_job, full_name):
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"full_name": full_name, "owner": {"login": "getsentry"}},
+            "workflow_job": {
+                **jobA_job,
+                "run_url": f"https://api.github.com/repos/{full_name}/actions/runs/1",
+            },
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_run_outside_the_payload_repository_is_rejected(monkeypatch, gh_app_env):
+    with open("tests/fixtures/commit/webhook_payload.json") as f:
+        payload = json.load(f)
+    monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
+    payload["workflow_run"]["repository"]["full_name"] = "getsentry/private"
+
+    reason, http_code = WebAppHandler().handle_event(
+        data=payload, headers={"X-GitHub-Event": "workflow_run"}
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0

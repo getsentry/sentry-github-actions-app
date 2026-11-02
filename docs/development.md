@@ -37,7 +37,7 @@ The argument must be a job URL. For a job in the `getsentry` org, you can set `I
 1. Start the app with `flask run -p 5001`.
 2. Start ngrok with `ngrok http 5001` and note the URL.
 3. Create a separate GitHub App for development, configured as in [deployment.md](deployment.md#configure-the-github-app), with its webhook URL set to the ngrok URL.
-4. Generate a private key for it and set `GH_APP_ID` and `GH_APP_PRIVATE_KEY` locally. Put secrets in `.env`, which `.envrc` loads.
+4. Generate a private key for it and set `GH_APP_ID`, `GH_APP_PRIVATE_KEY`, and the app's webhook secret as `GH_WEBHOOK_SECRET` locally. Put secrets in `.env`, which `.envrc` loads.
 5. Delete the private key from the GitHub App when you finish.
 
 Fixtures can carry old timestamps. Sentry then shows "Clock drift detected in SDK" on the transaction. You can ignore it.
