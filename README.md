@@ -87,6 +87,17 @@ commit_workflows = backend.yml, frontend.yml, acceptance.yml
 
 Then chart, for example, `p50(transaction.duration)` for `transaction.op:ci.commit event:push branch:master` (master) or `event:pull_request` (PRs). Each successful run of a listed workflow costs one GitHub API call; failed and skipped runs cost none.
 
+### Workflow traces (optional)
+
+Job traces send one transaction per job, so a workflow's jobs show up side by side rather than as one run. The app can also send one `ci.workflow` transaction per completed workflow run, with a `ci.job` span per job and a span per step under each job. Job traces keep being sent, so existing queries and dashboards don't change.
+
+To turn it on:
+
+1. Set `WORKFLOW_TRACES_ORGS` on the deployment to a comma-separated list of GitHub orgs (e.g. `getsentry`)
+2. Subscribe the GitHub App to **Workflow run** events (no new permissions needed)
+
+Each completed workflow run costs one GitHub API call. Runs with more than 100 jobs aren't traced.
+
 ## Get help
 
 Report bugs and feedback in [issue #46](https://github.com/getsentry/sentry-github-actions-app/issues/46). To develop or deploy the app, start at [AGENTS.md](AGENTS.md).

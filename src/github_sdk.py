@@ -174,6 +174,18 @@ class GithubClient:
         if trace:
             return self._send_envelope(trace)
 
+    def send_workflow_trace(self, workflow_run):
+        """Send one transaction for a workflow run, with a span per job and a child
+        span per step, so the whole run shows up as a single trace.
+        """
+        # A skipped run has no jobs to show, so don't spend an API call
+        if workflow_run["conclusion"] == "skipped":
+            return
+        jobs = self._fetch_github(_run_jobs_url(workflow_run)).json()
+        trace = _generate_workflow_trace(workflow_run, jobs)
+        if trace:
+            return self._send_envelope(trace)
+
     def send_trace(self, job):
         # This can happen when the workflow is skipped and there are no steps
         if job["conclusion"] == "skipped":
@@ -342,13 +354,7 @@ def _commit_transaction(workflow_run: dict, runs: list) -> dict:
         "slowest_workflow": _workflow_file(slowest),
     }
     data = {"commit": f"https://github.com/{repo}/commit/{sha}"}
-    # A push to master also lists forks' PRs whose head is our master, so only keep
-    # PRs into this repo
-    pull_requests = [
-        pr
-        for pr in workflow_run.get("pull_requests") or []
-        if pr["base"]["repo"]["url"] == f"{GITHUB_API_URL}/repos/{repo}"
-    ]
+    pull_requests = _pull_requests(workflow_run)
     if pull_requests:
         pr_number = pull_requests[0]["number"]
         tags["pull_request"] = pr_number
@@ -393,6 +399,121 @@ def _commit_transaction(workflow_run: dict, runs: list) -> dict:
             }
             for run in sorted(runs, key=lambda run: run["run_started_at"])
         ],
+    }
+
+
+def _pull_requests(workflow_run: dict) -> list:
+    # A push to master also lists forks' PRs whose head is our master, so only keep
+    # PRs into this repo
+    repo = workflow_run["repository"]["full_name"]
+    return [
+        pr
+        for pr in workflow_run.get("pull_requests") or []
+        if pr["base"]["repo"]["url"] == f"{GITHUB_API_URL}/repos/{repo}"
+    ]
+
+
+WORKFLOW_OP = "ci.workflow"
+JOB_OP = "ci.job"
+# One page of jobs; a run with more jobs than this is skipped rather than spending
+# more of the installation's API budget on it
+JOBS_PER_PAGE = 100
+
+
+def _run_jobs_url(workflow_run: dict) -> str:
+    repo = workflow_run["repository"]["full_name"]
+    # By default this lists the latest attempt of each job
+    return (
+        f"{GITHUB_API_URL}/repos/{repo}/actions/runs/{workflow_run['id']}/jobs"
+        f"?per_page={JOBS_PER_PAGE}"
+    )
+
+
+def _generate_workflow_trace(workflow_run: dict, jobs_response: dict) -> dict | None:
+    jobs = jobs_response.get("jobs", [])
+    if jobs_response.get("total_count", len(jobs)) > len(jobs):
+        logging.warning(
+            "Not tracing workflow run %s, it has more than %s jobs",
+            workflow_run["id"],
+            JOBS_PER_PAGE,
+        )
+        return None
+    # Skipped jobs never ran, so they have no steps (the job traces skip them too)
+    jobs = [
+        job for job in jobs if job["conclusion"] != "skipped" and job["completed_at"]
+    ]
+    if not jobs:
+        return None
+
+    repo = workflow_run["repository"]["full_name"]
+    # Deterministic, so a redelivered webhook sends a duplicate that's easy to spot.
+    # It differs from the job traces' trace id, so they don't show up in this trace.
+    trace_id = get_uuid_from_string(
+        f"workflow_run:{workflow_run['id']}run_attempt:{workflow_run['run_attempt']}"
+    )
+    span_id = trace_id[:16]
+    status = GithubClient.github_status_trace_status
+
+    spans = []
+    for job in jobs:
+        job_span_id = get_uuid()[:16]
+        spans.append(
+            {
+                "op": JOB_OP,
+                "description": job["name"],
+                "parent_span_id": span_id,
+                "span_id": job_span_id,
+                "trace_id": trace_id,
+                "start_timestamp": job["started_at"],
+                "timestamp": job["completed_at"],
+                "status": status.get(job["conclusion"], "unimplemented"),
+                "data": {"job": job["html_url"], "conclusion": job["conclusion"]},
+            }
+        )
+        spans.extend(_generate_spans(job["steps"], job_span_id, trace_id))
+
+    tags = {
+        "repo": repo,
+        "branch": workflow_run["head_branch"],
+        "commit": workflow_run["head_sha"],
+        "event": workflow_run["event"],
+        "workflow": _workflow_file(workflow_run),
+        "run_attempt": workflow_run["run_attempt"],
+        "workflow_status": workflow_run["conclusion"],
+    }
+    data = {"run": workflow_run["html_url"]}
+    pull_requests = _pull_requests(workflow_run)
+    if pull_requests:
+        pr_number = pull_requests[0]["number"]
+        tags["pull_request"] = pr_number
+        data["pr"] = f"https://github.com/{repo}/pull/{pr_number}"
+
+    author = (workflow_run.get("head_commit") or {}).get("author") or {}
+    return {
+        "event_id": get_uuid(),
+        "type": "transaction",
+        "transaction": workflow_run["name"],
+        "contexts": {
+            "trace": {
+                "op": WORKFLOW_OP,
+                "description": workflow_run["name"],
+                "span_id": span_id,
+                "trace_id": trace_id,
+                "type": "trace",
+                "status": status.get(workflow_run["conclusion"], "unimplemented"),
+                "data": data,
+            },
+        },
+        "user": author,
+        "tags": tags,
+        # A re-run keeps the jobs that passed before, which started before this attempt
+        "start_timestamp": min(
+            [workflow_run["run_started_at"]] + [job["started_at"] for job in jobs]
+        ),
+        "timestamp": max(
+            [workflow_run["updated_at"]] + [job["completed_at"] for job in jobs]
+        ),
+        "spans": spans,
     }
 
 

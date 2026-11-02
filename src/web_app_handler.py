@@ -23,6 +23,13 @@ def commit_traces_enabled() -> bool:
     return os.environ.get("COMMIT_TRACES_ENABLED", "").lower() in ("1", "true")
 
 
+def workflow_traces_enabled(org: str) -> bool:
+    # Off by default, and opt-in per GitHub org (e.g. `getsentry`) while we verify it.
+    # It costs one GitHub API call per completed workflow run
+    orgs = os.environ.get("WORKFLOW_TRACES_ORGS", "")
+    return org in {o.strip() for o in orgs.split(",") if o.strip()}
+
+
 class WebAppHandler:
     def __init__(self, dry_run=False):
         self.config = init_config()
@@ -45,21 +52,30 @@ class WebAppHandler:
                     data, lambda client, _: client.send_trace(data["workflow_job"])
                 )
         elif event == "workflow_run":
-            if not commit_traces_enabled():
-                reason = "Commit traces are not enabled."
+            workflow_traces = workflow_traces_enabled(
+                data["repository"]["owner"]["login"]
+            )
+            if not (commit_traces_enabled() or workflow_traces):
+                reason = "Workflow run traces are not enabled."
             elif data["action"] != "completed":
                 reason = "We cannot do anything with this workflow state."
-            elif data["workflow_run"]["conclusion"] != "success":
+            elif (
+                not workflow_traces and data["workflow_run"]["conclusion"] != "success"
+            ):
                 # Only a successful run can turn its commit green, so don't spend
                 # GitHub API calls on the others
                 reason = "Only successful workflow runs can turn a commit green."
             elif not self.dry_run:
-                reason, http_code = self._send(
-                    data,
-                    lambda client, config: client.send_commit_trace(
-                        data["workflow_run"], config.commit_workflows
-                    ),
-                )
+
+                def send(client, config):
+                    if workflow_traces:
+                        client.send_workflow_trace(data["workflow_run"])
+                    if commit_traces_enabled():
+                        client.send_commit_trace(
+                            data["workflow_run"], config.commit_workflows
+                        )
+
+                reason, http_code = self._send(data, send)
         else:
             reason = "Event not supported."
 

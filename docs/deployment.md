@@ -18,6 +18,7 @@ A Sentry project tracks errors of the backend itself. Its DSN is `APP_DSN`.
 | `GH_APP_PRIVATE_KEY` | Base64-encoded GitHub App private key. On Cloud Run (`K_SERVICE` set) without this variable, the app reads the key from Google Secret Manager instead. See `get_gh_app_private_key` in `src/web_app_handler.py`. |
 | `GH_TOKEN` | Optional personal access token. The app uses it when `GH_APP_ID` is unset or the private key fails to load. |
 | `COMMIT_TRACES_ENABLED` | Set to `true` or `1` to send `ci.commit` transactions. Requires the **Workflow run** event subscription. |
+| `WORKFLOW_TRACES_ORGS` | Comma-separated GitHub orgs (e.g. `getsentry`) to send `ci.workflow` transactions for. Requires the **Workflow run** event subscription. |
 | `LOGGING_LEVEL` | Optional Python logging level. Defaults to `INFO`. |
 | `FLASK_ENV` | Sets the `APP_DSN` environment. Defaults to `production`. `development` adds the `/debug-sentry` route. |
 
@@ -30,7 +31,7 @@ Only Sentry GitHub admins can change the app.
 3. Set the permissions:
    - Actions (workflows, workflow runs, and artifacts): read-only.
    - Single file: `sentry_config.ini`.
-4. Subscribe to the [Workflow job](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job) event. To send commit traces, also subscribe to [Workflow run](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run).
+4. Subscribe to the [Workflow job](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job) event. To send commit or workflow traces, also subscribe to [Workflow run](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run).
 5. Under "Private keys", select "Generate a private key". GitHub downloads a `.pem` file.
 6. Run `base64 -i <path_to_pem_file>` and set the output as `GH_APP_PRIVATE_KEY` on the deployment. Delete the `.pem` file.
 7. Set `GH_APP_ID` on the deployment.
