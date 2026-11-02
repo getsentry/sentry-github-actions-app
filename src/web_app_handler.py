@@ -14,10 +14,13 @@ from .github_app import GithubAppToken
 from .github_sdk import GITHUB_API_URL
 from .github_sdk import GithubClient
 from src.sentry_config import fetch_config_for_github_org
+from src.sentry_config import GITHUB_OWNER_PATTERN
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
+
+GITHUB_REPO_NAME_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
 
 
 def commit_traces_enabled() -> bool:
@@ -124,7 +127,15 @@ def _targets_payload_repository(event: str, data: dict) -> bool:
     repository would send that repository's data to the owner's Sentry project.
     """
     repo = data["repository"]["full_name"]
-    if repo.split("/")[0].lower() != data["repository"]["owner"]["login"].lower():
+    owner, _, name = repo.partition("/")
+    if owner.lower() != data["repository"]["owner"]["login"].lower():
+        return False
+    # The name ends up in API URLs, so it can't hold another path (e.g. `../other/repo`)
+    if (
+        not GITHUB_OWNER_PATTERN.fullmatch(owner)
+        or not GITHUB_REPO_NAME_PATTERN.fullmatch(name)
+        or name in (".", "..")
+    ):
         return False
     if event == "workflow_job":
         run_url = (

@@ -315,6 +315,28 @@ def test_job_outside_the_payload_repository_is_rejected(
 
 
 @responses.activate
+@pytest.mark.parametrize(
+    "full_name", ("getsentry/../victim/private", "getsentry/..", "getsentry/a/b")
+)
+def test_repository_name_with_a_path_is_rejected(gh_app_env, jobA_job, full_name):
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"full_name": full_name, "owner": {"login": "getsentry"}},
+            "workflow_job": {
+                **jobA_job,
+                "run_url": f"https://api.github.com/repos/{full_name}/actions/runs/1",
+            },
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
 def test_run_outside_the_payload_repository_is_rejected(monkeypatch, gh_app_env):
     with open("tests/fixtures/commit/webhook_payload.json") as f:
         payload = json.load(f)
