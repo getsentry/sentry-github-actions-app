@@ -4,12 +4,14 @@ import base64
 import hmac
 import logging
 import os
+import re
 from typing import NamedTuple
 
 from sentry_sdk import metrics
 from sentry_sdk.utils import BadDsn
 
 from .github_app import GithubAppToken
+from .github_sdk import GITHUB_API_URL
 from .github_sdk import GithubClient
 from src.sentry_config import fetch_config_for_github_org
 
@@ -42,7 +44,9 @@ class WebAppHandler:
                 reason = "Skipped jobs are not traced."
             elif not self.dry_run:
                 reason, http_code = self._send(
-                    data, lambda client, _: client.send_trace(data["workflow_job"])
+                    event,
+                    data,
+                    lambda client, _: client.send_trace(data["workflow_job"]),
                 )
         elif event == "workflow_run":
             if not commit_traces_enabled():
@@ -55,6 +59,7 @@ class WebAppHandler:
                 reason = "Only successful workflow runs can turn a commit green."
             elif not self.dry_run:
                 reason, http_code = self._send(
+                    event,
                     data,
                     lambda client, config: client.send_commit_trace(
                         data["workflow_run"], config.commit_workflows
@@ -65,7 +70,7 @@ class WebAppHandler:
 
         return reason, http_code
 
-    def _send(self, data, send) -> tuple[str, int]:
+    def _send(self, event, data, send) -> tuple[str, int]:
         # Only GitHub App webhooks carry an installation; repository webhooks don't
         installation_id = (data.get("installation") or {}).get("id")
         org = data["repository"]["owner"]["login"]
@@ -74,6 +79,8 @@ class WebAppHandler:
                 "The payload has no installation. Send it from the GitHub App's webhook.",
                 400,
             )
+        if not _targets_payload_repository(event, data):
+            return "The payload's workflow doesn't belong to its repository.", 400
 
         try:
             # We are executing in Github App mode
@@ -97,16 +104,36 @@ class WebAppHandler:
         send(client, config)
 
     def valid_signature(self, body, headers):
+        # Without a secret anyone could send a payload, and the app would act on it
+        # with the token of whichever installation the payload names
         if not self.config.gh.webhook_secret:
-            return True
-        else:
-            signature = headers["X-Hub-Signature-256"].replace("sha256=", "")
-            body_signature = hmac.new(
-                self.config.gh.webhook_secret.encode(),
-                msg=body,
-                digestmod="sha256",
-            ).hexdigest()
-            return hmac.compare_digest(body_signature, signature)
+            return False
+        signature = headers.get("X-Hub-Signature-256", "").replace("sha256=", "")
+        body_signature = hmac.new(
+            self.config.gh.webhook_secret.encode(),
+            msg=body,
+            digestmod="sha256",
+        ).hexdigest()
+        return hmac.compare_digest(body_signature, signature)
+
+
+def _targets_payload_repository(event: str, data: dict) -> bool:
+    """Whether the workflow the app reads with the token is in the payload's repository.
+
+    The DSN comes from the repository owner's .sentry repo, so a workflow from another
+    repository would send that repository's data to the owner's Sentry project.
+    """
+    repo = data["repository"]["full_name"]
+    if repo.split("/")[0].lower() != data["repository"]["owner"]["login"].lower():
+        return False
+    if event == "workflow_job":
+        run_url = (
+            rf"{re.escape(GITHUB_API_URL)}/repos/{re.escape(repo)}/actions/runs/\d+"
+        )
+        return bool(
+            re.fullmatch(run_url, data["workflow_job"]["run_url"], re.IGNORECASE)
+        )
+    return data["workflow_run"]["repository"]["full_name"].lower() == repo.lower()
 
 
 class GithubAppConfig(NamedTuple):
@@ -166,11 +193,15 @@ def init_config():
             "We have failed to load the private key, however, we will fallback to the PAT method.",
         )
 
+    webhook_secret = os.environ.get("GH_WEBHOOK_SECRET")
+    if not webhook_secret:
+        logger.error("GH_WEBHOOK_SECRET is not set, so every webhook will be rejected.")
+
     return Config(
         gh_app,
         GitHubConfig(
             # This token is a PAT
             token=os.environ.get("GH_TOKEN"),
-            webhook_secret=os.environ.get("GH_WEBHOOK_SECRET"),
+            webhook_secret=webhook_secret,
         ),
     )
