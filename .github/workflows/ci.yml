@@ -10,6 +10,11 @@ on:
     paths-ignore:
       - "**.md"
 
+# Without this, every job gets a GITHUB_TOKEN that can write to the repo, including
+# the third-party actions and dependencies that the jobs run. No job needs more.
+permissions:
+  contents: read
+
 jobs:
   # In reality, this will not be completely accurate as only when a Docker image is deployed to GCP
   # we will truly have a deployed release. Nevertheless, this will be useful once it is deployed
@@ -74,7 +79,8 @@ jobs:
         run: |
           tox
 
-      - uses: codecov/codecov-action@v2
+      # Third-party, so pin it to a commit that a moved tag can't change
+      - uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
         with:
           verbose: true # optional (default = false)
 
