@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.11-slim AS builder
+FROM python:3.15-slim AS builder
 RUN pip install -U pip setuptools wheel
 # Copy files
 COPY requirements.frozen.txt /project/
@@ -7,12 +7,12 @@ WORKDIR /project
 RUN pip install --no-cache-dir -r requirements.frozen.txt
 
 # Execution stage
-FROM python:3.11-slim
+FROM python:3.15-slim
 WORKDIR /app
 COPY src/ /project/src
 # Retrieve packages from build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
-RUN pip install gunicorn==20.1.0
+COPY --from=builder /usr/local/lib/python3.15/site-packages/ /usr/local/lib/python3.15/site-packages/
+RUN pip install gunicorn==26.2.0
 # Source code
 COPY src/ /app/src/
 # 1 worker, 4 worker threads should be more than enough.
