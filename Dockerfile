@@ -12,7 +12,7 @@ WORKDIR /app
 COPY src/ /project/src
 # Retrieve packages from build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
-RUN pip install gunicorn==20.1.0
+COPY --from=builder /usr/local/bin/gunicorn /usr/local/bin/gunicorn
 # Source code
 COPY src/ /app/src/
 # 1 worker, 4 worker threads should be more than enough.
