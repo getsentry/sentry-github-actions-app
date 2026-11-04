@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
+from typing import NoReturn
 
 import sentry_sdk
 from flask import abort
 from flask import Flask
 from flask import jsonify
 from flask import request
+from flask import Response
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.scrubber import EventScrubber
@@ -15,7 +18,7 @@ from sentry_sdk.scrubber import EventScrubber
 from .web_app_handler import WebAppHandler
 
 
-def init_sentry(dsn, **options):
+def init_sentry(dsn: str, **options: Any) -> None:
     # This tracks errors and performance of the app itself rather than GH workflows
     sentry_sdk.init(
         dsn=dsn,
@@ -53,7 +56,7 @@ app = Flask(__name__)
 
 
 @app.route("/", methods=["POST"])
-def main():
+def main() -> tuple[Response, int]:
     if not handler.valid_signature(request.data, request.headers):
         abort(
             400,
@@ -73,9 +76,9 @@ def main():
 if os.environ.get("FLASK_ENV") == "development":
 
     @app.route("/debug-sentry")
-    def trigger_error():
+    def trigger_error() -> NoReturn:
         try:
-            1 / 0
+            raise ZeroDivisionError("division by zero")
         except Exception as e:
             # Report it to Sentry
             capture_exception(e)

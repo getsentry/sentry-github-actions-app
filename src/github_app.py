@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import time
-from typing import Generator
+from typing import Iterator
 
 import jwt
 import requests
@@ -14,31 +14,31 @@ from src import REQUEST_TIMEOUT
 
 
 class GithubAppToken:
-    def __init__(self, private_key, app_id) -> None:
+    def __init__(self, private_key: str, app_id: str) -> None:
         self.headers = self.get_authentication_header(private_key, app_id)
 
     # From docs: Installation access tokens have the permissions
     # configured by the GitHub App and expire after one hour.
     @contextlib.contextmanager
-    def get_token(self, installation_id: int) -> Generator[str, None, None]:
+    def get_token(self, installation_id: int) -> Iterator[str]:
         req = requests.post(
             url=f"https://api.github.com/app/installations/{installation_id}/access_tokens",
             headers=self.headers,
             timeout=REQUEST_TIMEOUT,
         )
         req.raise_for_status()
-        resp = req.json()
+        token: str = req.json()["token"]
         try:
             # This token expires in an hour
-            yield resp["token"]
+            yield token
         finally:
             requests.delete(
                 "https://api.github.com/installation/token",
-                headers={"Authorization": f"token {resp['token']}"},
+                headers={"Authorization": f"token {token}"},
                 timeout=REQUEST_TIMEOUT,
             )
 
-    def get_jwt_token(self, private_key, app_id):
+    def get_jwt_token(self, private_key: str, app_id: str) -> str:
         payload = {
             # issued at time, 60 seconds in the past to allow for clock drift
             "iat": int(time.time()) - 60,
@@ -49,7 +49,9 @@ class GithubAppToken:
         }
         return jwt.encode(payload, private_key, algorithm="RS256")
 
-    def get_authentication_header(self, private_key, app_id):
+    def get_authentication_header(
+        self, private_key: str, app_id: str
+    ) -> dict[str, str]:
         jwt_token = self.get_jwt_token(private_key, app_id)
         return {
             "Accept": "application/vnd.github.v3+json",

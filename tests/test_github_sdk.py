@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from typing import Any
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
@@ -24,14 +26,14 @@ if sys.version_info[:2] >= (3, 10):
     prepend = "GithubClient."
 
 
-def test_job_without_steps(skipped_workflow):
+def test_job_without_steps(skipped_workflow: dict[str, Any]) -> None:
     sdk = GithubClient(dsn=DSN, token=TOKEN)
     assert sdk.send_trace(skipped_workflow) == None
 
 
-def test_initialize_without_setting_dsn():
+def test_initialize_without_setting_dsn() -> None:
     with pytest.raises(TypeError) as excinfo:
-        GithubClient()
+        GithubClient()  # type: ignore[call-arg]
     (msg,) = excinfo.value.args
     assert (
         msg
@@ -39,9 +41,9 @@ def test_initialize_without_setting_dsn():
     )
 
 
-def test_initialize_without_setting_token():
+def test_initialize_without_setting_token() -> None:
     with pytest.raises(TypeError) as excinfo:
-        GithubClient(dsn=DSN)
+        GithubClient(dsn=DSN)  # type: ignore[call-arg]
     (msg,) = excinfo.value.args
     assert msg == f"{prepend}__init__() missing 1 required positional argument: 'token'"
 
@@ -60,7 +62,7 @@ def test_initialize_without_setting_token():
         ),
     ],
 )
-def test_initialize_with_dsn(dsn, sentry_project_url):
+def test_initialize_with_dsn(dsn: str, sentry_project_url: str) -> None:
     client = GithubClient(dsn=dsn, token=TOKEN)
     assert client.sentry_key == "foo"
     assert client.sentry_project_url == sentry_project_url
@@ -77,13 +79,13 @@ def test_initialize_with_dsn(dsn, sentry_project_url):
         "https://foo@random.ingest.sentry.io/1234/",
     ],
 )
-def test_initialize_with_invalid_dsn(dsn):
+def test_initialize_with_invalid_dsn(dsn: str) -> None:
     with pytest.raises(BadDsn):
         GithubClient(dsn=dsn, token=TOKEN)
 
 
 @responses.activate
-def test_ensure_raise_error_on_github_api_failure():
+def test_ensure_raise_error_on_github_api_failure() -> None:
     """We want to delegate to the app using the SDK to handle the error."""
     url = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
     responses.get(url, json="{reason: Internal Server Error}", status=500)
@@ -108,7 +110,7 @@ def test_ensure_raise_error_on_github_api_failure():
     ],
 )
 @responses.activate
-def test_fetch_github_only_sends_the_token_to_the_github_api(url):
+def test_fetch_github_only_sends_the_token_to_the_github_api(url: str) -> None:
     with pytest.raises(GithubSentryError):
         GithubClient(dsn=DSN, token=TOKEN)._fetch_github(url)
     assert len(responses.calls) == 0
@@ -118,12 +120,12 @@ def test_fetch_github_only_sends_the_token_to_the_github_api(url):
 @responses.activate
 @patch("src.github_sdk.get_uuid")
 def test_trace_generation(
-    mock_get_uuid,
-    jobA_job,
-    jobA_runs,
-    jobA_trace,
-    uuid_list,
-):
+    mock_get_uuid: MagicMock,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    jobA_trace: dict[str, Any],
+    uuid_list: list[str],
+) -> None:
     mock_get_uuid.side_effect = uuid_list
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
@@ -139,9 +141,8 @@ def test_trace_generation(
 
 @responses.activate
 def test_trace_generation_with_failing_steps(
-    failure_job,
-    failure_runs,
-):
+    failure_job: dict[str, Any], failure_runs: dict[str, Any]
+) -> None:
     responses.get(
         failure_job["run_url"],
         json=failure_runs,
@@ -165,7 +166,9 @@ def test_trace_generation_with_failing_steps(
     ],
 )
 @responses.activate
-def test_trace_generation_for_required_workflow(jobA_job, jobA_runs, path):
+def test_trace_generation_for_required_workflow(
+    jobA_job: dict[str, Any], jobA_runs: dict[str, Any], path: str
+) -> None:
     # Fetching a required workflow's `workflow_url` fails with a 422, and `responses`
     # raises on any request that isn't registered
     jobA_runs[
@@ -185,11 +188,11 @@ def test_trace_generation_for_required_workflow(jobA_job, jobA_runs, path):
 @responses.activate
 @patch("src.github_sdk.get_uuid")
 def test_send_trace(
-    mock_get_uuid,
-    jobA_job,
-    jobA_runs,
-    uuid_list,
-):
+    mock_get_uuid: MagicMock,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    uuid_list: list[str],
+) -> None:
     mock_get_uuid.side_effect = uuid_list
     responses.get(
         "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951",
@@ -200,6 +203,7 @@ def test_send_trace(
 
     client = GithubClient(dsn=DSN, token=TOKEN)
     resp = client.send_trace(jobA_job)
+    assert resp is not None
     # This cannot happen in a fixture, otherwise, there will be a tiny bit of a clock drift
     now = datetime.utcnow()
 

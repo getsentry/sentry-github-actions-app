@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+from typing import Any
 from urllib.parse import urlparse
 
+import pytest
 import responses
 
 from src import REQUEST_TIMEOUT
@@ -12,7 +14,11 @@ from src.web_app_handler import WebAppHandler
 
 
 @responses.activate
-def test_every_request_has_a_timeout(monkeypatch, webhook_event, jobA_runs):
+def test_every_request_has_a_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    webhook_event: dict[str, Any],
+    jobA_runs: dict[str, Any],
+) -> None:
     # Github App mode, so that the installation token is minted and revoked too
     monkeypatch.delenv("K_SERVICE", raising=False)
     monkeypatch.setenv("GH_APP_ID", "1")

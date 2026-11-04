@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import json
+from typing import Any
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 import responses
@@ -16,7 +18,7 @@ from tests.test_sentry_config_file import config_file_meta
 valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
 
 
-def test_invalid_header():
+def test_invalid_header() -> None:
     handler = WebAppHandler()
     # This is missing X-GitHub-Event in the headers
     with pytest.raises(KeyError) as excinfo:
@@ -26,7 +28,7 @@ def test_invalid_header():
 
 
 # XXX: These tests could be covered with a JSON schema
-def test_invalid_github_event():
+def test_invalid_github_event() -> None:
     handler = WebAppHandler()
     # This has an invalid X-GitHub-Event value
     reason, http_code = handler.handle_event(
@@ -37,7 +39,7 @@ def test_invalid_github_event():
     assert http_code == 200
 
 
-def test_missing_action_key():
+def test_missing_action_key() -> None:
     handler = WebAppHandler()
     # This payload is missing the action key
     with pytest.raises(KeyError) as excinfo:
@@ -49,7 +51,7 @@ def test_missing_action_key():
     assert msg == "action"
 
 
-def test_not_completed_workflow():
+def test_not_completed_workflow() -> None:
     handler = WebAppHandler()
     # This payload has an an action state we cannot process
     reason, http_code = handler.handle_event(
@@ -61,7 +63,7 @@ def test_not_completed_workflow():
 
 
 @pytest.fixture
-def gh_app_env(monkeypatch):
+def gh_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -75,7 +77,9 @@ def gh_app_env(monkeypatch):
 
 
 @responses.activate
-def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
+def test_skipped_job_makes_no_api_calls(
+    gh_app_env: None, skipped_workflow: dict[str, Any]
+) -> None:
     handler = WebAppHandler()
     # Only Github App mode mints an installation token
     assert handler.config.gh_app
@@ -98,7 +102,12 @@ def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
 
 @responses.activate
 @mock.patch("src.web_app_handler.metrics")
-def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
+def test_invalid_dsn_is_a_warning(
+    mock_metrics: MagicMock,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
         json={"token": "irrelevant"},
@@ -137,7 +146,7 @@ def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
 
 
 @pytest.mark.skip(reason="Not so important")
-def test_missing_workflow_job(monkeypatch):
+def test_missing_workflow_job(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GH_APP_ID", raising=False)
     handler = WebAppHandler()
     # This tries to send a trace but we're missing the workflow_job key
@@ -150,7 +159,9 @@ def test_missing_workflow_job(monkeypatch):
     assert msg == "workflow_job"
 
 
-def test_no_secret_rejects_every_payload(monkeypatch, webhook_event):
+def test_no_secret_rejects_every_payload(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
     handler = WebAppHandler()
     assert not handler.valid_signature(
@@ -159,7 +170,9 @@ def test_no_secret_rejects_every_payload(monkeypatch, webhook_event):
     )
 
 
-def test_missing_signature_is_invalid(monkeypatch, webhook_event):
+def test_missing_signature_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
     handler = WebAppHandler()
     assert not handler.valid_signature(
@@ -167,7 +180,9 @@ def test_missing_signature_is_invalid(monkeypatch, webhook_event):
     )
 
 
-def test_valid_signature(monkeypatch, webhook_event):
+def test_valid_signature(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
     handler = WebAppHandler()
     assert (
@@ -179,7 +194,9 @@ def test_valid_signature(monkeypatch, webhook_event):
     )
 
 
-def test_invalid_signature(monkeypatch, webhook_event):
+def test_invalid_signature(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "mistyped_secret")
     handler = WebAppHandler()
     # This is unit testing that the function works as expected
@@ -192,7 +209,9 @@ def test_invalid_signature(monkeypatch, webhook_event):
     )
 
 
-def test_handle_event_with_secret(monkeypatch, webhook_event):
+def test_handle_event_with_secret(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
     handler = WebAppHandler(dry_run=True)
     reason, http_code = handler.handle_event(
@@ -204,7 +223,9 @@ def test_handle_event_with_secret(monkeypatch, webhook_event):
 
 
 @responses.activate
-def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
+def test_workflow_run_sends_commit_trace(
+    monkeypatch: pytest.MonkeyPatch, gh_app_env: None
+) -> None:
     with open("tests/fixtures/commit/webhook_payload.json") as f:
         payload = json.load(f)
     with open("tests/fixtures/commit/runs.json") as f:
@@ -234,7 +255,9 @@ def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
 
 
 @responses.activate
-def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job):
+def test_repository_webhook_in_github_app_mode_is_rejected(
+    gh_app_env: None, jobA_job: dict[str, Any]
+) -> None:
     handler = WebAppHandler()
     # Repository webhooks have no installation, so no installation token can be minted
     reason, http_code = handler.handle_event(
@@ -257,7 +280,9 @@ def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job)
 
 @responses.activate
 @mock.patch("src.web_app_handler.metrics")
-def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
+def test_repository_webhook_uses_the_token(
+    mock_metrics: MagicMock, monkeypatch: pytest.MonkeyPatch, jobA_job: dict[str, Any]
+) -> None:
     monkeypatch.delenv("GH_APP_ID", raising=False)
     monkeypatch.setenv("GH_TOKEN", "pat")
     responses.get(
@@ -298,8 +323,8 @@ def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
     ),
 )
 def test_job_outside_the_payload_repository_is_rejected(
-    gh_app_env, jobA_job, owner, run_url
-):
+    gh_app_env: None, jobA_job: dict[str, Any], owner: str, run_url: str
+) -> None:
     reason, http_code = WebAppHandler().handle_event(
         data={
             "action": "completed",
@@ -318,7 +343,9 @@ def test_job_outside_the_payload_repository_is_rejected(
 @pytest.mark.parametrize(
     "full_name", ("getsentry/../victim/private", "getsentry/..", "getsentry/a/b")
 )
-def test_repository_name_with_a_path_is_rejected(gh_app_env, jobA_job, full_name):
+def test_repository_name_with_a_path_is_rejected(
+    gh_app_env: None, jobA_job: dict[str, Any], full_name: str
+) -> None:
     reason, http_code = WebAppHandler().handle_event(
         data={
             "action": "completed",
@@ -337,7 +364,9 @@ def test_repository_name_with_a_path_is_rejected(gh_app_env, jobA_job, full_name
 
 
 @responses.activate
-def test_run_outside_the_payload_repository_is_rejected(monkeypatch, gh_app_env):
+def test_run_outside_the_payload_repository_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, gh_app_env: None
+) -> None:
     with open("tests/fixtures/commit/webhook_payload.json") as f:
         payload = json.load(f)
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")

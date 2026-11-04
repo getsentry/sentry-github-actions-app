@@ -6,6 +6,9 @@ import io
 import logging
 import uuid
 from datetime import datetime
+from typing import Any
+from typing import cast
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 import requests
@@ -15,6 +18,9 @@ from sentry_sdk.utils import format_timestamp
 
 from src import REQUEST_TIMEOUT
 
+if TYPE_CHECKING:
+    from sentry_sdk._types import Event
+
 GITHUB_API_URL = "https://api.github.com"
 
 
@@ -22,11 +28,11 @@ class GithubSentryError(Exception):
     pass
 
 
-def get_uuid():
+def get_uuid() -> str:
     return uuid.uuid4().hex
 
 
-def get_uuid_from_string(input_string):
+def get_uuid_from_string(input_string: str) -> str:
     hash_object = hashlib.sha256(input_string.encode())
     hash_value = hash_object.hexdigest()
     return uuid.UUID(hash_value[:32]).hex
@@ -36,7 +42,7 @@ class GithubClient:
     # This transform GH jobs conclusion keywords to Sentry performance status
     github_status_trace_status = {"success": "ok", "failure": "internal_error"}
 
-    def __init__(self, token, dsn, dry_run=False) -> None:
+    def __init__(self, token: str | None, dsn: str, dry_run: bool = False) -> None:
         self.token = token
         self.dry_run = dry_run
         # Orgs write the DSN into their .sentry repo by hand; raises BadDsn if it's invalid
@@ -45,7 +51,7 @@ class GithubClient:
         # '{SCHEME}://{HOST}{PATH}api/{PROJECT_ID}/envelope/'
         self.sentry_project_url = auth.get_api_url()
 
-    def _fetch_github(self, url):
+    def _fetch_github(self, url: str) -> requests.Response:
         # The URL comes from the webhook payload, so only ever send the token to GitHub's API
         if not url.startswith(f"{GITHUB_API_URL}/"):
             raise GithubSentryError(f"Not a GitHub API URL: {url}")
@@ -60,11 +66,11 @@ class GithubClient:
         req.raise_for_status()
         return req
 
-    def _get_extra_metadata(self, job):
+    def _get_extra_metadata(self, job: dict[str, Any]) -> dict[str, Any]:
         # XXX: This is the slowest call
         runs = self._fetch_github(job["run_url"]).json()
         repo = runs["repository"]["full_name"]
-        meta = {
+        meta: dict[str, Any] = {
             "author": runs["head_commit"]["author"],
             # https://getsentry.atlassian.net/browse/TET-22
             # Tags are not linkified externally, plain text data can be selected in browsers and opened
@@ -102,7 +108,7 @@ class GithubClient:
     # Documentation about traces, transactions and spans
     # https://docs.sentry.io/product/sentry-basics/tracing/distributed-tracing/#traces
     # https://develop.sentry.dev/sdk/performance/
-    def _generate_trace(self, job):
+    def _generate_trace(self, job: dict[str, Any]) -> dict[str, Any]:
         meta = self._get_extra_metadata(job)
         transaction = _base_transaction(job)
         transaction["user"] = meta["author"]
@@ -122,11 +128,11 @@ class GithubClient:
         )
         return transaction
 
-    def _send_envelope(self, trace):
+    def _send_envelope(self, trace: dict[str, Any]) -> requests.Response | None:
         if self.dry_run:
-            return
+            return None
         envelope = Envelope()
-        envelope.add_transaction(trace)
+        envelope.add_transaction(cast("Event", trace))
         now = datetime.utcnow()
 
         headers = {
@@ -152,7 +158,11 @@ class GithubClient:
         req.raise_for_status()
         return req
 
-    def send_commit_trace(self, workflow_run, commit_workflows=frozenset()):
+    def send_commit_trace(
+        self,
+        workflow_run: dict[str, Any],
+        commit_workflows: frozenset[str] = frozenset(),
+    ) -> requests.Response | None:
         """Send a `ci.commit` trace if this workflow run turned its commit green.
 
         The job traces describe one job each, so they can't tell how long a commit
@@ -166,27 +176,29 @@ class GithubClient:
         """
         # Neither of these can turn the commit green, so don't spend an API call
         if workflow_run["conclusion"] != "success":
-            return
+            return None
         if commit_workflows and _workflow_file(workflow_run) not in commit_workflows:
-            return
+            return None
         runs = self._fetch_github(_commit_runs_url(workflow_run)).json()
         trace = _generate_commit_trace(workflow_run, runs, commit_workflows)
         if trace:
             return self._send_envelope(trace)
+        return None
 
-    def send_trace(self, job):
+    def send_trace(self, job: dict[str, Any]) -> requests.Response | None:
         # This can happen when the workflow is skipped and there are no steps
         if job["conclusion"] == "skipped":
             logging.info(
                 f"We are ignoring '{job['name']}' because it was skipped -> {job['html_url']}",
             )
-            return
+            return None
         trace = self._generate_trace(job)
         if trace:
             return self._send_envelope(trace)
+        return None
 
 
-def _base_transaction(job):
+def _base_transaction(job: dict[str, Any]) -> dict[str, Any]:
     return {
         "event_id": get_uuid(),
         # The distinctive feature of a Transaction is type: "transaction".
@@ -217,7 +229,9 @@ def _base_transaction(job):
 
 
 # https://develop.sentry.dev/sdk/event-payloads/span/
-def _generate_spans(steps, parent_span_id, trace_id):
+def _generate_spans(
+    steps: list[dict[str, Any]], parent_span_id: str, trace_id: str
+) -> list[dict[str, Any]]:
     spans = []
     for step in steps:
         try:
@@ -246,7 +260,7 @@ PASSING_CONCLUSIONS = {"success", "skipped", "neutral"}
 RUNS_PER_PAGE = 100
 
 
-def _commit_runs_url(workflow_run: dict) -> str:
+def _commit_runs_url(workflow_run: dict[str, Any]) -> str:
     repo = workflow_run["repository"]["full_name"]
     query = urlencode(
         {
@@ -260,8 +274,10 @@ def _commit_runs_url(workflow_run: dict) -> str:
 
 
 def _generate_commit_trace(
-    workflow_run: dict, runs_response: dict, commit_workflows=frozenset()
-) -> dict | None:
+    workflow_run: dict[str, Any],
+    runs_response: dict[str, Any],
+    commit_workflows: frozenset[str] = frozenset(),
+) -> dict[str, Any] | None:
     """Build the commit transaction, or return None if this run shouldn't send one.
 
     Only the webhook for the run that turned the commit green sends the trace:
@@ -270,7 +286,7 @@ def _generate_commit_trace(
     same list of runs, so when several runs finish at once, they agree on which
     one is last.
     """
-    runs = runs_response.get("workflow_runs", [])
+    runs: list[dict[str, Any]] = runs_response.get("workflow_runs", [])
     if runs_response.get("total_count", len(runs)) > len(runs):
         logging.warning(
             "Not tracing commit %s, it has more than %s workflow runs",
@@ -298,10 +314,10 @@ def _generate_commit_trace(
     return _commit_transaction(workflow_run, runs)
 
 
-def _latest_run_per_workflow(runs: list) -> list:
+def _latest_run_per_workflow(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # A workflow can run more than once for a commit (e.g. a PR's checks get
     # re-triggered days later); only its latest run decides whether it's green
-    latest = {}
+    latest: dict[str, dict[str, Any]] = {}
     for run in runs:
         path = run["path"]
         if path not in latest or run["id"] > latest[path]["id"]:
@@ -309,7 +325,7 @@ def _latest_run_per_workflow(runs: list) -> list:
     return list(latest.values())
 
 
-def _run_duration(run: dict) -> float:
+def _run_duration(run: dict[str, Any]) -> float:
     return (
         _parse_ts(run["updated_at"]) - _parse_ts(run["run_started_at"])
     ).total_seconds()
@@ -319,10 +335,12 @@ def _parse_ts(ts: str) -> datetime:
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
 
 
-def _commit_transaction(workflow_run: dict, runs: list) -> dict:
-    repo = workflow_run["repository"]["full_name"]
-    sha = workflow_run["head_sha"]
-    event = workflow_run["event"]
+def _commit_transaction(
+    workflow_run: dict[str, Any], runs: list[dict[str, Any]]
+) -> dict[str, Any]:
+    repo: str = workflow_run["repository"]["full_name"]
+    sha: str = workflow_run["head_sha"]
+    event: str = workflow_run["event"]
     # Deterministic, so a redelivered webhook sends a duplicate that's easy to spot
     trace_id = get_uuid_from_string(f"repo:{repo}commit:{sha}event:{event}")
     span_id = trace_id[:16]
@@ -331,7 +349,7 @@ def _commit_transaction(workflow_run: dict, runs: list) -> dict:
     # keeps the wait before a re-run, or a re-trigger days later, out of it.
     slowest = max(runs, key=lambda run: (_run_duration(run), run["id"]))
 
-    tags = {
+    tags: dict[str, Any] = {
         "ci_result": "green",
         "repo": repo,
         "branch": workflow_run["head_branch"],
@@ -396,7 +414,8 @@ def _commit_transaction(workflow_run: dict, runs: list) -> dict:
     }
 
 
-def _workflow_file(run: dict) -> str:
+def _workflow_file(run: dict[str, Any]) -> str:
     # e.g. `backend.yml`. A run's path can name the repo the workflow lives in and end
     # in a ref (e.g. `org/repo/.github/workflows/foo.yml@refs/heads/main`)
-    return run["path"].split("@", 1)[0].rsplit("/")[-1]
+    path: str = run["path"]
+    return path.split("@", 1)[0].rsplit("/")[-1]

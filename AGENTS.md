@@ -6,6 +6,7 @@ Flask app that receives GitHub `workflow_job` and `workflow_run` webhooks and se
 
 - Install: `pip install -r requirements.txt -r requirements-dev.txt`
 - Test: `pytest` (CI runs `tox`)
+- Type check: `mypy` (strict, over `src`, `tests`, and `cli.py`)
 - Lint and format: `pre-commit run --all-files`
 
 ## Invariants

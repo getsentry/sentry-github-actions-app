@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+from types import TracebackType
+from typing import Any
 from unittest import TestCase
 
 import pytest
@@ -37,7 +39,7 @@ token = "foo_token"
 installation_id = 1
 
 
-def config_file_meta(dsn: str) -> dict:
+def config_file_meta(dsn: str) -> dict[str, Any]:
     contents = f"[sentry-github-actions-app]\ndsn = {dsn}\n"
     return {
         **sentry_config_file_meta,
@@ -102,7 +104,7 @@ class TestSentryConfigCase(TestCase):
             fetch_dsn_for_github_org("other-org", token, 2)
 
         # Sentry sends every frame's local variables along with an error
-        tb = excinfo.tb
+        tb: TracebackType | None = excinfo.tb
         while tb:
             assert expected_dsn not in repr(tb.tb_frame.f_locals)
             tb = tb.tb_next
@@ -133,7 +135,7 @@ class TestSentryConfigCase(TestCase):
 
 
 @responses.activate
-def test_commit_workflows():
+def test_commit_workflows() -> None:
     contents = (
         "[sentry-github-actions-app]\n"
         f"dsn = {expected_dsn}\n"
@@ -153,7 +155,7 @@ def test_commit_workflows():
 
 
 @responses.activate
-def test_commit_workflows_default_to_every_workflow():
+def test_commit_workflows_default_to_every_workflow() -> None:
     responses.get(api_url.replace("{owner}", org), json=sentry_config_file_meta)
     assert fetch_config_for_github_org(
         org, token, installation_id
