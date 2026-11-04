@@ -67,17 +67,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      # Third-party, so pin it to a commit that a moved tag can't change
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.15"
 
       - name: Set up
         run: |
-          pip install tox
+          uv sync --locked
 
       - name: Run tests
         run: |
-          tox
+          uv run pytest
 
       # Third-party, so pin it to a commit that a moved tag can't change
       - uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
@@ -92,17 +93,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      # Third-party, so pin it to a commit that a moved tag can't change
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.15"
 
       - name: Set up
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt
+          uv sync --locked
 
       - name: Run mypy
         run: |
-          mypy
+          uv run mypy
 
   pre-commit-checks:
     name: Pre-commit checks
@@ -112,19 +114,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      # Third-party, so pin it to a commit that a moved tag can't change
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.15"
 
       - name: Set up
         run: |
-          pip install wheel
-          pip install pre-commit
-
-      - name: Install hooks
-        run: |
-          pre-commit install
+          uv sync --locked
 
       - name: Run hooks
         run: |
-          pre-commit run --all-files
+          uv run pre-commit run --all-files

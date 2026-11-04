@@ -4,14 +4,14 @@ Flask app that receives GitHub `workflow_job` and `workflow_run` webhooks and se
 
 ## Commands
 
-- Install: `pip install -r requirements.txt -r requirements-dev.txt`
-- Test: `pytest` (CI runs `tox`)
-- Type check: `mypy` (strict, over `src`, `tests`, and `cli.py`)
-- Lint and format: `pre-commit run --all-files`
+- Install: `uv sync`
+- Test: `uv run pytest`
+- Type check: `uv run mypy` (strict, over `src`, `tests`, and `cli.py`)
+- Lint and format: `uv run pre-commit run --all-files`
 
 ## Invariants
 
-- `requirements.txt` holds direct dependencies. The Docker image installs `requirements.frozen.txt`, so update both.
+- Dependencies live in `pyproject.toml` and are locked in `uv.lock`. Change them with `uv add`, `uv remove`, or `uv lock --upgrade-package`, and commit `uv.lock`. CI and the Docker image install with `--locked`, so a stale lockfile fails them.
 
 ## Docs
 

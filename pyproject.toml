@@ -1,5 +1,5 @@
 [project]
-name = "Github Actions to Sentry app"
+name = "sentry-github-actions-app"
 version = "0.0.1"
 description = "It listens to workflow events and inserts them into Sentry."
 authors = [
@@ -7,9 +7,32 @@ authors = [
 ]
 license-expression = "MIT"
 requires-python = ">=3.15"
+dependencies = [
+    "cachetools==5.3.2",
+    "flask==2.3.3",
+    "google-cloud-secret-manager==2.31.0",
+    "gunicorn==26.2.0",
+    "pyjwt[crypto]==2.15.1",
+    "requests==2.34.2",
+    "sentry-sdk[flask]==2.71.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/getsentry/sentry-github-actions-app"
+
+[dependency-groups]
+dev = [
+    "black>=22.3.0",
+    "freezegun>=1.2.1",
+    "mypy==2.4.1",
+    "pre-commit>=2.18.1",
+    "pytest>=7.1.1",
+    "pytest-cov>=3.0.0",
+    "python-dotenv>=0.20.0",
+    "responses>=0.20.0",
+    "types-cachetools>=5.3.0",
+    "types-requests>=2.33.0",
+]
 
 [tool.pytest.ini_options]
 # -ra:  Show extra test summary info: (a)ll except passed
@@ -23,16 +46,6 @@ files = ["src", "tests", "cli.py"]
 strict = true
 warn_unreachable = true
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = python3.15
-skipsdist = true
-
-[testenv]
-deps =
-    -rrequirements.txt
-    -rrequirements-dev.txt
-commands =
-    pytest
-"""
+[tool.uv]
+# This is an app, not a library, so uv doesn't build or install it.
+package = false

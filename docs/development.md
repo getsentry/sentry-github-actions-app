@@ -2,23 +2,24 @@
 
 ## Set up
 
-If you use direnv, `.envrc` creates `.venv`, installs dependencies, and installs the pre-commit hooks. Otherwise, run:
+Install [uv](https://docs.astral.sh/uv/) (`brew install uv`). If you use direnv, `.envrc` syncs `.venv`, activates it, and installs the pre-commit hooks. Otherwise, run:
 
 ```shell
-python3 -m venv .venv
+uv sync
 source .venv/bin/activate
-pip install wheel
-pip install -r requirements.txt -r requirements-dev.txt
 pre-commit install
 ```
+
+`uv sync` installs the Python version that `pyproject.toml` requires if you don't have it, and the dependencies pinned in `uv.lock`.
+
+To add or upgrade a dependency, use `uv add <package>` (`uv add --dev <package>` for dev tools) or `uv lock --upgrade-package <package>`, and commit `uv.lock`.
 
 ## Commands
 
 | Command | Description |
 | --- | --- |
 | `flask run -p 5001` | Start the app on <http://localhost:5001>. `.flaskenv` sets `FLASK_APP=src.main`. |
-| `pytest` | Run the tests. |
-| `tox` | Run the tests in an isolated environment, as CI does. |
+| `pytest` | Run the tests, as CI does. |
 | `pytest --cov=src --cov-report=html` | Generate a coverage report. |
 | `mypy` | Type check the code in strict mode, as CI does. |
 | `pre-commit run --all-files` | Run the lint and format hooks, as CI does. |
