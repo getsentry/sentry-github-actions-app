@@ -14,7 +14,6 @@ from sentry_sdk.transport import Transport
 
 from src import main
 from src.sentry_config import SENTRY_CONFIG_API_URL
-from src.web_app_handler import WebAppHandler
 from tests.helpers import sentry_config_response
 from tests.helpers import WEBHOOK_SECRET
 
@@ -40,13 +39,10 @@ def app_sentry() -> Iterator[list[Any]]:
 
 @responses.activate
 def test_github_tokens_are_scrubbed_from_app_errors(
-    monkeypatch: pytest.MonkeyPatch,
     gh_app_env: None,
     app_sentry: list[Any],
     webhook_event: dict[str, Any],
 ) -> None:
-    monkeypatch.setattr(main, "handler", WebAppHandler())
-
     data = webhook_event["payload"]
     data["installation"] = {"id": 1}
     org = data["repository"]["owner"]["login"]
@@ -66,7 +62,8 @@ def test_github_tokens_are_scrubbed_from_app_errors(
     signature = hmac.new(
         WEBHOOK_SECRET.encode(), msg=body, digestmod="sha256"
     ).hexdigest()
-    resp = main.app.test_client().post(
+    client = main.create_app().test_client()
+    resp = client.post(
         "/",
         data=body,
         headers={
