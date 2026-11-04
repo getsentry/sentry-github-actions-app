@@ -13,7 +13,7 @@ dependencies = [
     "google-cloud-secret-manager==2.31.0",
     "gunicorn==26.2.0",
     "pyjwt[crypto]==2.15.1",
-    "requests==2.27.1",
+    "requests==2.34.2",
     "sentry-sdk[flask]==2.71.0",
 ]
 
@@ -31,8 +31,7 @@ dev = [
     "python-dotenv>=0.20.0",
     "responses>=0.20.0",
     "types-cachetools>=5.3.0",
-    # The last release that supports urllib3 1.x, which requests 2.27 needs
-    "types-requests==2.31.0.6",
+    "types-requests>=2.33.0",
 ]
 
 [tool.pytest.ini_options]
