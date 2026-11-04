@@ -1,17 +1,8 @@
-# Build stage
-FROM python:3.11-slim AS builder
-RUN pip install -U pip setuptools wheel
-# Copy files
-COPY requirements.frozen.txt /project/
-WORKDIR /project
-RUN pip install --no-cache-dir -r requirements.frozen.txt
-
-# Execution stage
+# Every dependency installs from a prebuilt wheel, so a separate build stage saves nothing.
 FROM python:3.11-slim
 WORKDIR /app
-COPY src/ /project/src
-# Retrieve packages from build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY requirements.frozen.txt .
+RUN pip install --no-cache-dir -r requirements.frozen.txt
 RUN pip install gunicorn==20.1.0
 # Source code
 COPY src/ /app/src/
