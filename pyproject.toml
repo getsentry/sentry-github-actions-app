@@ -30,9 +30,11 @@ envlist = python3.10
 skipsdist = true
 
 [testenv]
+# The constraints make tests use the versions that the Docker image installs.
 deps =
     -rrequirements.txt
     -rrequirements-dev.txt
+    -crequirements.frozen.txt
 commands =
     pytest
 """

@@ -65,7 +65,7 @@ def main() -> tuple[Response, int]:
 
     # Top-level crash preventing try block
     try:
-        reason, http_code = handler.handle_event(request.json, request.headers)
+        reason, http_code = handler.handle_event(request.get_json(), request.headers)
         return jsonify({"reason": reason}), http_code
     except Exception as e:
         logger.exception(e)

@@ -8,7 +8,7 @@ If you use direnv, `.envrc` creates `.venv`, installs dependencies, and installs
 python3 -m venv .venv
 source .venv/bin/activate
 pip install wheel
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt -c requirements.frozen.txt
 pre-commit install
 ```
 
