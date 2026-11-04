@@ -1,0 +1,6 @@
+# The image only copies requirements.frozen.txt and src/. Keep the rest out of
+# the build context.
+*
+!requirements.frozen.txt
+!src/
+**/__pycache__
