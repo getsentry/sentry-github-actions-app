@@ -15,6 +15,8 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/pyth
 RUN pip install gunicorn==20.1.0
 # Source code
 COPY src/ /app/src/
+# The app doesn't write to disk, so it doesn't need root.
+USER nobody
 # 1 worker, 4 worker threads should be more than enough.
 # --worker-class gthread is automatically set if --threads > 1.
 # In my experience this configuration hovers around 100 MB
