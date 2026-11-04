@@ -12,7 +12,7 @@ dependencies = [
     "flask==2.3.3",
     "google-cloud-secret-manager==2.31.0",
     "gunicorn==26.2.0",
-    "pyjwt[crypto]==2.4.0",
+    "pyjwt[crypto]==2.15.1",
     "requests==2.27.1",
     "sentry-sdk[flask]==2.71.0",
 ]
