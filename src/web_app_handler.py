@@ -5,22 +5,32 @@ import hmac
 import logging
 import os
 import re
+from typing import Any
+from typing import Callable
+from typing import Mapping
 from typing import NamedTuple
 
 from sentry_sdk import metrics
 from sentry_sdk.utils import BadDsn
+from werkzeug.datastructures import Headers
 
 from .github_app import GithubAppToken
 from .github_sdk import GITHUB_API_URL
 from .github_sdk import GithubClient
 from src.sentry_config import fetch_config_for_github_org
 from src.sentry_config import GITHUB_OWNER_PATTERN
+from src.sentry_config import OrgConfig
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 
 GITHUB_REPO_NAME_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
+
+# Flask's request headers, or a dict in tests
+WebhookHeaders = Mapping[str, str] | Headers
+# Sends the event's trace with the client and config of the payload's org
+Sender = Callable[[GithubClient, OrgConfig], object]
 
 
 def commit_traces_enabled() -> bool:
@@ -29,11 +39,13 @@ def commit_traces_enabled() -> bool:
 
 
 class WebAppHandler:
-    def __init__(self, dry_run=False):
+    def __init__(self, dry_run: bool = False) -> None:
         self.config = init_config()
         self.dry_run = dry_run
 
-    def handle_event(self, data, headers):
+    def handle_event(
+        self, data: dict[str, Any], headers: WebhookHeaders
+    ) -> tuple[str, int]:
         # We return 200 to make webhook not turn red since everything got processed well
         http_code = 200
         reason = "OK"
@@ -73,10 +85,10 @@ class WebAppHandler:
 
         return reason, http_code
 
-    def _send(self, event, data, send) -> tuple[str, int]:
+    def _send(self, event: str, data: dict[str, Any], send: Sender) -> tuple[str, int]:
         # Only GitHub App webhooks carry an installation; repository webhooks don't
-        installation_id = (data.get("installation") or {}).get("id")
-        org = data["repository"]["owner"]["login"]
+        installation_id: int | None = (data.get("installation") or {}).get("id")
+        org: str = data["repository"]["owner"]["login"]
         if self.config.gh_app and installation_id is None:
             return (
                 "The payload has no installation. Send it from the GitHub App's webhook.",
@@ -86,11 +98,12 @@ class WebAppHandler:
             return "The payload's workflow doesn't belong to its repository.", 400
 
         try:
-            # We are executing in Github App mode
-            if self.config.gh_app:
-                with GithubAppToken(**self.config.gh_app._asdict()).get_token(
-                    installation_id
-                ) as token:
+            # We are executing in Github App mode (the installation was checked above)
+            if self.config.gh_app and installation_id is not None:
+                with GithubAppToken(
+                    private_key=self.config.gh_app.private_key,
+                    app_id=self.config.gh_app.app_id,
+                ).get_token(installation_id) as token:
                     self._send_with_token(token, installation_id, org, send)
             else:
                 self._send_with_token(self.config.gh.token, installation_id, org, send)
@@ -101,12 +114,18 @@ class WebAppHandler:
             return "The DSN in the org's .sentry/sentry_config.ini is invalid.", 200
         return "OK", 200
 
-    def _send_with_token(self, token, installation_id, org, send):
+    def _send_with_token(
+        self,
+        token: str | None,
+        installation_id: int | None,
+        org: str,
+        send: Sender,
+    ) -> None:
         config = fetch_config_for_github_org(org, token, installation_id)
         client = GithubClient(token=token, dsn=config.dsn, dry_run=self.dry_run)
         send(client, config)
 
-    def valid_signature(self, body, headers):
+    def valid_signature(self, body: bytes, headers: WebhookHeaders) -> bool:
         # Without a secret anyone could send a payload, and the app would act on it
         # with the token of whichever installation the payload names
         if not self.config.gh.webhook_secret:
@@ -120,13 +139,13 @@ class WebAppHandler:
         return hmac.compare_digest(body_signature, signature)
 
 
-def _targets_payload_repository(event: str, data: dict) -> bool:
+def _targets_payload_repository(event: str, data: dict[str, Any]) -> bool:
     """Whether the workflow the app reads with the token is in the payload's repository.
 
     The DSN comes from the repository owner's .sentry repo, so a workflow from another
     repository would send that repository's data to the owner's Sentry project.
     """
-    repo = data["repository"]["full_name"]
+    repo: str = data["repository"]["full_name"]
     owner, _, name = repo.partition("/")
     if owner.lower() != data["repository"]["owner"]["login"].lower():
         return False
@@ -144,11 +163,12 @@ def _targets_payload_repository(event: str, data: dict) -> bool:
         return bool(
             re.fullmatch(run_url, data["workflow_job"]["run_url"], re.IGNORECASE)
         )
-    return data["workflow_run"]["repository"]["full_name"].lower() == repo.lower()
+    run_repo: str = data["workflow_run"]["repository"]["full_name"]
+    return run_repo.lower() == repo.lower()
 
 
 class GithubAppConfig(NamedTuple):
-    app_id: int
+    app_id: str
     private_key: str
 
 
@@ -162,8 +182,7 @@ class Config(NamedTuple):
     gh: GitHubConfig
 
 
-def get_gh_app_private_key():
-    private_key = None
+def get_gh_app_private_key() -> str:
     # K_SERVICE is a reserved variable for Google Cloud services
     if os.environ.get("K_SERVICE") and not os.environ.get("GH_APP_PRIVATE_KEY"):
         # XXX: Put in here since it currently affects test execution
@@ -181,14 +200,14 @@ def get_gh_app_private_key():
             gcp_client.access_secret_version(
                 name=uri,
             ).payload.data.decode("UTF-8"),
-        )
+        ).decode()
     else:
         # Outside Cloud Run, or when the variable is set, read the key from the environment
-        private_key = base64.b64decode(os.environ["GH_APP_PRIVATE_KEY"])
+        private_key = base64.b64decode(os.environ["GH_APP_PRIVATE_KEY"]).decode()
     return private_key
 
 
-def init_config():
+def init_config() -> Config:
     gh_app = None
     try:
         # This variable is the key to enabling Github App mode or not

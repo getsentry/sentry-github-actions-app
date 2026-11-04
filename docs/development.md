@@ -20,6 +20,7 @@ pre-commit install
 | `pytest` | Run the tests. |
 | `tox` | Run the tests in an isolated environment, as CI does. |
 | `pytest --cov=src --cov-report=html` | Generate a coverage report. |
+| `mypy` | Type check the code in strict mode, as CI does. |
 | `pre-commit run --all-files` | Run the lint and format hooks, as CI does. |
 
 ## Ingest a single job

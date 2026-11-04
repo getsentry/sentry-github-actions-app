@@ -3,10 +3,14 @@ from __future__ import annotations
 import base64
 import hmac
 import json
+from typing import Any
+from typing import ClassVar
+from typing import Iterator
 
 import pytest
 import responses
 import sentry_sdk
+from sentry_sdk.envelope import Envelope
 from sentry_sdk.transport import Transport
 
 from src import main
@@ -18,16 +22,16 @@ TOKEN = "ghs_installationtokenvalue"
 
 
 class CapturingTransport(Transport):
-    events: list = []
+    events: ClassVar[list[Any]] = []
 
-    def capture_envelope(self, envelope):
+    def capture_envelope(self, envelope: Envelope) -> None:
         self.events.extend(
             item.payload.json for item in envelope.items if item.type == "event"
         )
 
 
 @pytest.fixture
-def app_sentry():
+def app_sentry() -> Iterator[list[Any]]:
     CapturingTransport.events = []
     main.init_sentry("https://key@o1.ingest.sentry.io/1", transport=CapturingTransport)
     yield CapturingTransport.events
@@ -36,8 +40,10 @@ def app_sentry():
 
 @responses.activate
 def test_github_tokens_are_scrubbed_from_app_errors(
-    monkeypatch, app_sentry, webhook_event
-):
+    monkeypatch: pytest.MonkeyPatch,
+    app_sentry: list[Any],
+    webhook_event: dict[str, Any],
+) -> None:
     monkeypatch.delenv("K_SERVICE", raising=False)
     monkeypatch.setenv("GH_APP_ID", "1")
     monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(b"irrelevant").decode())

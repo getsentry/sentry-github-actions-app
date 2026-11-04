@@ -6,6 +6,7 @@ import os
 import re
 import threading
 from configparser import ConfigParser
+from typing import Any
 from typing import NamedTuple
 from urllib.parse import quote
 
@@ -27,7 +28,9 @@ GITHUB_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 CONFIG_CACHE_TTL_SECONDS = 10 * 60
 # Module globals rather than @cached, whose closure would put every cached DSN in the
 # local variables Sentry captures with an error
-_config_cache = TTLCache(maxsize=1024, ttl=CONFIG_CACHE_TTL_SECONDS)
+_config_cache: TTLCache[tuple[int | None, str], OrgConfig] = TTLCache(
+    maxsize=1024, ttl=CONFIG_CACHE_TTL_SECONDS
+)
 _config_cache_lock = threading.Lock()
 
 
@@ -35,11 +38,11 @@ class OrgConfig(NamedTuple):
     dsn: str
     # Workflow files (e.g. `backend.yml`) that have to pass for a commit to be green.
     # Empty means every workflow run for the commit counts.
-    commit_workflows: frozenset = frozenset()
+    commit_workflows: frozenset[str] = frozenset()
 
 
 def fetch_config_for_github_org(
-    org: str, token: str, installation_id: int
+    org: str, token: str | None, installation_id: int | None
 ) -> OrgConfig:
     # Only serve a config to the installation whose token could read it
     key = (installation_id, org)
@@ -52,11 +55,13 @@ def fetch_config_for_github_org(
     return config
 
 
-def fetch_dsn_for_github_org(org: str, token: str, installation_id: int) -> str:
+def fetch_dsn_for_github_org(
+    org: str, token: str | None, installation_id: int | None
+) -> str:
     return fetch_config_for_github_org(org, token, installation_id).dsn
 
 
-def _fetch_config(org: str, token: str) -> OrgConfig:
+def _fetch_config(org: str, token: str | None) -> OrgConfig:
     # Using the GH app token allows fetching the file in a private repo
     headers = {
         "Accept": "application/vnd.github+json",
@@ -72,7 +77,7 @@ def _fetch_config(org: str, token: str) -> OrgConfig:
         # - Get meta about sentry_config.ini file
         resp = requests.get(api_url, headers=headers, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        meta = resp.json()
+        meta: dict[str, Any] = resp.json()
 
         if meta["type"] != "file":
             # XXX: custom error

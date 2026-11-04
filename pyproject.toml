@@ -17,6 +17,12 @@ Homepage = "https://github.com/getsentry/sentry-github-actions-app"
 addopts = "-ra -q"
 testpaths = [ "tests" ]
 
+[tool.mypy]
+python_version = "3.10"
+files = ["src", "tests", "cli.py"]
+strict = true
+warn_unreachable = true
+
 [tool.tox]
 legacy_tox_ini = """
 [tox]
