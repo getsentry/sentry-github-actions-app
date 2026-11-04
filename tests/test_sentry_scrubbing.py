@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+import base64
+import hmac
+import json
+
+import pytest
+import responses
+import sentry_sdk
+from sentry_sdk.transport import Transport
+
+from src import main
+from src.github_app import GithubAppToken
+from src.sentry_config import SENTRY_CONFIG_API_URL
+from src.web_app_handler import WebAppHandler
+
+TOKEN = "ghs_installationtokenvalue"
+
+
+class CapturingTransport(Transport):
+    events: list = []
+
+    def capture_envelope(self, envelope):
+        self.events.extend(
+            item.payload.json for item in envelope.items if item.type == "event"
+        )
+
+
+@pytest.fixture
+def app_sentry():
+    CapturingTransport.events = []
+    main.init_sentry("https://key@o1.ingest.sentry.io/1", transport=CapturingTransport)
+    yield CapturingTransport.events
+    sentry_sdk.init()
+
+
+@responses.activate
+def test_github_tokens_are_scrubbed_from_app_errors(
+    monkeypatch, app_sentry, webhook_event
+):
+    monkeypatch.delenv("K_SERVICE", raising=False)
+    monkeypatch.setenv("GH_APP_ID", "1")
+    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(b"irrelevant").decode())
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", "secret")
+    monkeypatch.setattr(
+        GithubAppToken, "get_jwt_token", lambda self, private_key, app_id: "jwt"
+    )
+    monkeypatch.setattr(main, "handler", WebAppHandler())
+
+    data = webhook_event["payload"]
+    data["installation"] = {"id": 1}
+    org = data["repository"]["owner"]["login"]
+    config = "[sentry-github-actions-app]\ndsn = https://foo@o1.ingest.sentry.io/2\n"
+    responses.post(
+        "https://api.github.com/app/installations/1/access_tokens",
+        json={"token": TOKEN},
+    )
+    responses.delete("https://api.github.com/installation/token", status=204)
+    responses.get(
+        SENTRY_CONFIG_API_URL.replace("{owner}", org),
+        json={
+            "type": "file",
+            "encoding": "base64",
+            "content": base64.b64encode(config.encode()).decode(),
+        },
+    )
+    # Fails after the token is in the request headers and the token response
+    responses.get(data["workflow_job"]["run_url"], status=502)
+
+    body = json.dumps(data).encode()
+    signature = hmac.new(b"secret", msg=body, digestmod="sha256").hexdigest()
+    resp = main.app.test_client().post(
+        "/",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-GitHub-Event": "workflow_job",
+            "X-Hub-Signature-256": f"sha256={signature}",
+        },
+    )
+    sentry_sdk.flush()
+
+    assert resp.status_code == 500
+    assert app_sentry, "the error should reach Sentry"
+    assert TOKEN not in json.dumps(app_sentry)

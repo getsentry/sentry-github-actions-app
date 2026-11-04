@@ -10,21 +10,32 @@ from flask import jsonify
 from flask import request
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.scrubber import EventScrubber
 
 from .web_app_handler import WebAppHandler
 
-APP_DSN = os.environ.get("APP_DSN")
-if APP_DSN:
+
+def init_sentry(dsn, **options):
     # This tracks errors and performance of the app itself rather than GH workflows
     sentry_sdk.init(
-        dsn=APP_DSN,
+        dsn=dsn,
         integrations=[FlaskIntegration()],
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
         environment=os.environ.get("FLASK_ENV", "production"),
+        # GitHub tokens sit in dicts in the frames' local variables (e.g. the request
+        # `headers` and the access token response), and the default scrubber only
+        # checks top-level variable names
+        event_scrubber=EventScrubber(recursive=True),
+        **options,
     )
+
+
+APP_DSN = os.environ.get("APP_DSN")
+if APP_DSN:
+    init_sentry(APP_DSN)
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "INFO")
 # Set the logging level for all loggers (e.g. requests)
