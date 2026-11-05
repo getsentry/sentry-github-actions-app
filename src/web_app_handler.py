@@ -136,7 +136,9 @@ class WebAppHandler:
             msg=body,
             digestmod="sha256",
         ).hexdigest()
-        return hmac.compare_digest(body_signature, signature)
+        # compare_digest raises TypeError for a str with non-ASCII characters, and
+        # anyone can send this header, so compare bytes to reject it rather than crash
+        return hmac.compare_digest(body_signature.encode(), signature.encode())
 
 
 def _targets_payload_repository(event: str, data: dict[str, Any]) -> bool:

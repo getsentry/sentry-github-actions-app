@@ -159,6 +159,17 @@ def test_missing_signature_is_invalid(
     )
 
 
+def test_non_ascii_signature_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    handler = WebAppHandler()
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": "sha256=\u00e9"},
+    )
+
+
 def test_valid_signature(
     monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
 ) -> None:
