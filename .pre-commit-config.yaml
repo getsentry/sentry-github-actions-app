@@ -1,6 +1,8 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 22.6.0 # Replace by any tag/version: https://github.com/psf/black/tags
+    # 22.x crashes on Python 3.15. 24.0+ adds a blank line after module docstrings,
+    # which reorder-python-imports removes again, so the two hooks never settle.
+    rev: 23.12.1
     hooks:
       - id: black
         language_version: python3
@@ -15,14 +17,17 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: debug-statements
-      - id: requirements-txt-fixer
   - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.1.0
+    rev: v3.19.0
     hooks:
       - id: reorder-python-imports
         args: [--py38-plus, --add-import, "from __future__ import annotations"]
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.32.1
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: [--py38-plus]
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.32.0
+    hooks:
+      - id: zizmor

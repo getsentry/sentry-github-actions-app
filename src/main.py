@@ -50,37 +50,42 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 logger.info("App logging is working.")
 
-handler = WebAppHandler()
 
-app = Flask(__name__)
+def create_app() -> Flask:
+    # The handler reads its config (e.g. the GitHub App's private key) from the
+    # environment, so build it when the app starts rather than on import
+    handler = WebAppHandler()
+    app = Flask(__name__)
 
+    @app.route("/", methods=["POST"])
+    def main() -> tuple[Response, int]:
+        if not handler.valid_signature(request.data, request.headers):
+            abort(
+                400,
+                "The secret you are using on your Github webhook does not match this app's secret.",
+            )
 
-@app.route("/", methods=["POST"])
-def main() -> tuple[Response, int]:
-    if not handler.valid_signature(request.data, request.headers):
-        abort(
-            400,
-            "The secret you are using on your Github webhook does not match this app's secret.",
-        )
-
-    # Top-level crash preventing try block
-    try:
-        reason, http_code = handler.handle_event(request.json, request.headers)
-        return jsonify({"reason": reason}), http_code
-    except Exception as e:
-        logger.exception(e)
-        capture_exception(e)
-        return jsonify({"reason": "There was an error."}), 500
-
-
-if os.environ.get("FLASK_ENV") == "development":
-
-    @app.route("/debug-sentry")
-    def trigger_error() -> NoReturn:
+        # Top-level crash preventing try block
         try:
-            raise ZeroDivisionError("division by zero")
+            reason, http_code = handler.handle_event(
+                request.get_json(), request.headers
+            )
+            return jsonify({"reason": reason}), http_code
         except Exception as e:
-            # Report it to Sentry
+            logger.exception(e)
             capture_exception(e)
-            # Let Flask handle the rest
-            raise e
+            return jsonify({"reason": "There was an error."}), 500
+
+    if os.environ.get("FLASK_ENV") == "development":
+
+        @app.route("/debug-sentry")
+        def trigger_error() -> NoReturn:
+            try:
+                raise ZeroDivisionError("division by zero")
+            except Exception as e:
+                # Report it to Sentry
+                capture_exception(e)
+                # Let Flask handle the rest
+                raise e
+
+    return app

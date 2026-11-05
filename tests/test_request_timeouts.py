@@ -1,37 +1,26 @@
 from __future__ import annotations
 
-import base64
 from typing import Any
 from urllib.parse import urlparse
 
-import pytest
 import responses
 
 from src import REQUEST_TIMEOUT
-from src.github_app import GithubAppToken
 from src.sentry_config import SENTRY_CONFIG_API_URL
 from src.web_app_handler import WebAppHandler
+from tests.helpers import sentry_config_response
 
 
 @responses.activate
 def test_every_request_has_a_timeout(
-    monkeypatch: pytest.MonkeyPatch,
+    # Github App mode, so that the installation token is minted and revoked too
+    gh_app_env: None,
     webhook_event: dict[str, Any],
     jobA_runs: dict[str, Any],
 ) -> None:
-    # Github App mode, so that the installation token is minted and revoked too
-    monkeypatch.delenv("K_SERVICE", raising=False)
-    monkeypatch.setenv("GH_APP_ID", "1")
-    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(b"irrelevant").decode())
-    monkeypatch.setattr(
-        GithubAppToken, "get_jwt_token", lambda self, private_key, app_id: "jwt"
-    )
-
     data = webhook_event["payload"]
     data["installation"] = {"id": 1}
     org = data["repository"]["owner"]["login"]
-    dsn = "https://foo@o1.ingest.sentry.io/2"
-    config = f"[sentry-github-actions-app]\ndsn = {dsn}\n"
 
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
@@ -40,11 +29,7 @@ def test_every_request_has_a_timeout(
     responses.delete("https://api.github.com/installation/token", status=204)
     responses.get(
         SENTRY_CONFIG_API_URL.replace("{owner}", org),
-        json={
-            "type": "file",
-            "encoding": "base64",
-            "content": base64.b64encode(config.encode()).decode(),
-        },
+        json=sentry_config_response("https://foo@o1.ingest.sentry.io/2"),
     )
     responses.get(data["workflow_job"]["run_url"], json=jobA_runs)
     responses.post("https://o1.ingest.sentry.io/api/2/envelope/")

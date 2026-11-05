@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import hmac
 import json
 from typing import Any
@@ -14,9 +13,9 @@ from sentry_sdk.envelope import Envelope
 from sentry_sdk.transport import Transport
 
 from src import main
-from src.github_app import GithubAppToken
 from src.sentry_config import SENTRY_CONFIG_API_URL
-from src.web_app_handler import WebAppHandler
+from tests.helpers import sentry_config_response
+from tests.helpers import WEBHOOK_SECRET
 
 TOKEN = "ghs_installationtokenvalue"
 
@@ -40,23 +39,13 @@ def app_sentry() -> Iterator[list[Any]]:
 
 @responses.activate
 def test_github_tokens_are_scrubbed_from_app_errors(
-    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
     app_sentry: list[Any],
     webhook_event: dict[str, Any],
 ) -> None:
-    monkeypatch.delenv("K_SERVICE", raising=False)
-    monkeypatch.setenv("GH_APP_ID", "1")
-    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(b"irrelevant").decode())
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "secret")
-    monkeypatch.setattr(
-        GithubAppToken, "get_jwt_token", lambda self, private_key, app_id: "jwt"
-    )
-    monkeypatch.setattr(main, "handler", WebAppHandler())
-
     data = webhook_event["payload"]
     data["installation"] = {"id": 1}
     org = data["repository"]["owner"]["login"]
-    config = "[sentry-github-actions-app]\ndsn = https://foo@o1.ingest.sentry.io/2\n"
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
         json={"token": TOKEN},
@@ -64,18 +53,17 @@ def test_github_tokens_are_scrubbed_from_app_errors(
     responses.delete("https://api.github.com/installation/token", status=204)
     responses.get(
         SENTRY_CONFIG_API_URL.replace("{owner}", org),
-        json={
-            "type": "file",
-            "encoding": "base64",
-            "content": base64.b64encode(config.encode()).decode(),
-        },
+        json=sentry_config_response("https://foo@o1.ingest.sentry.io/2"),
     )
     # Fails after the token is in the request headers and the token response
     responses.get(data["workflow_job"]["run_url"], status=502)
 
     body = json.dumps(data).encode()
-    signature = hmac.new(b"secret", msg=body, digestmod="sha256").hexdigest()
-    resp = main.app.test_client().post(
+    signature = hmac.new(
+        WEBHOOK_SECRET.encode(), msg=body, digestmod="sha256"
+    ).hexdigest()
+    client = main.create_app().test_client()
+    resp = client.post(
         "/",
         data=body,
         headers={
