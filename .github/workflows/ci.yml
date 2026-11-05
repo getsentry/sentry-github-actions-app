@@ -1,9 +1,9 @@
 name: CI
 
 on:
+  # No paths-ignore here: the required "Required checks" job must report on every PR,
+  # or a docs-only PR waits forever for a check that never runs.
   pull_request:
-    paths-ignore:
-      - "**.md"
   push:
     branches:
       - "main"
@@ -146,3 +146,17 @@ jobs:
       - name: Run hooks
         run: |
           uv run pre-commit run --all-files
+
+  # The one check the branch ruleset requires, so adding or renaming a job above
+  # only means updating this list. It runs even when a job fails, and fails unless
+  # every job here succeeded.
+  required-checks:
+    name: Required checks
+    if: ${{ always() }}
+    needs: [docker-build, tests, typing, pre-commit-checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if a required job didn't succeed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: exit 1
