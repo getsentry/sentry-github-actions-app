@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 from typing import Any
 
 import pytest
@@ -21,24 +20,10 @@ ACCEPTANCE_RUN_ID = 38468300577
 
 
 @pytest.fixture
-def webhook_payload() -> dict[str, Any]:
-    with open("tests/fixtures/commit/webhook_payload.json") as f:
-        payload: dict[str, Any] = json.load(f)
-    return payload
-
-
-@pytest.fixture
-def workflow_run(webhook_payload: dict[str, Any]) -> dict[str, Any]:
+def workflow_run(commit_webhook_payload: dict[str, Any]) -> dict[str, Any]:
     # backend.yml, the last of the commit's 10 workflow runs to complete
-    run: dict[str, Any] = webhook_payload["workflow_run"]
+    run: dict[str, Any] = commit_webhook_payload["workflow_run"]
     return run
-
-
-@pytest.fixture
-def commit_runs() -> dict[str, Any]:
-    with open("tests/fixtures/commit/runs.json") as f:
-        runs: dict[str, Any] = json.load(f)
-    return runs
 
 
 def _run(runs: dict[str, Any], run_id: int) -> dict[str, Any]:
@@ -267,25 +252,26 @@ def test_run_outside_commit_workflows_makes_no_api_calls(
     assert len(responses.calls) == 0
 
 
+@responses.activate
 def test_workflow_run_events_are_off_by_default(
-    monkeypatch: pytest.MonkeyPatch, webhook_payload: dict[str, Any]
+    commit_webhook_payload: dict[str, Any]
 ) -> None:
-    monkeypatch.delenv("COMMIT_TRACES_ENABLED", raising=False)
     reason, http_code = WebAppHandler().handle_event(
-        data=webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
     assert reason == "Commit traces are not enabled."
     assert http_code == 200
+    assert len(responses.calls) == 0
 
 
 @responses.activate
 def test_unsuccessful_workflow_run_event_makes_no_api_calls(
-    monkeypatch: pytest.MonkeyPatch, webhook_payload: dict[str, Any]
+    monkeypatch: pytest.MonkeyPatch, commit_webhook_payload: dict[str, Any]
 ) -> None:
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
-    webhook_payload["workflow_run"]["conclusion"] = "failure"
+    commit_webhook_payload["workflow_run"]["conclusion"] = "failure"
     reason, http_code = WebAppHandler().handle_event(
-        data=webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
     assert reason == "Only successful workflow runs can turn a commit green."
     assert http_code == 200

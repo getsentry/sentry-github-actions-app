@@ -1,6 +1,7 @@
-# The image only copies requirements.frozen.txt and src/. Keep the rest out of
+# The image only copies pyproject.toml, uv.lock, and src/. Keep the rest out of
 # the build context.
 *
-!requirements.frozen.txt
+!pyproject.toml
+!uv.lock
 !src/
 **/__pycache__
