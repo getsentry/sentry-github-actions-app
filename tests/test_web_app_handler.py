@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import json
 from typing import Any
 from unittest import mock
@@ -8,12 +7,11 @@ from unittest.mock import MagicMock
 
 import pytest
 import responses
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 
 from src.sentry_config import SENTRY_CONFIG_API_URL as sentry_config_api_url
 from src.web_app_handler import WebAppHandler
-from tests.test_sentry_config_file import config_file_meta
+from tests.helpers import sentry_config_response
+from tests.helpers import WEBHOOK_SECRET
 
 valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
 
@@ -62,20 +60,6 @@ def test_not_completed_workflow() -> None:
     assert http_code == 200
 
 
-@pytest.fixture
-def gh_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    monkeypatch.delenv("K_SERVICE", raising=False)
-    monkeypatch.setenv("GH_APP_ID", "1")
-    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(pem).decode())
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
-
-
 @responses.activate
 def test_skipped_job_makes_no_api_calls(
     gh_app_env: None, skipped_workflow: dict[str, Any]
@@ -115,7 +99,7 @@ def test_invalid_dsn_is_a_warning(
     responses.delete("https://api.github.com/installation/token")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("dsn: <>"),
+        json=sentry_config_response("dsn: <>"),
     )
 
     handler = WebAppHandler()
@@ -145,9 +129,7 @@ def test_invalid_dsn_is_a_warning(
     )
 
 
-@pytest.mark.skip(reason="Not so important")
-def test_missing_workflow_job(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("GH_APP_ID", raising=False)
+def test_missing_workflow_job() -> None:
     handler = WebAppHandler()
     # This tries to send a trace but we're missing the workflow_job key
     with pytest.raises(KeyError) as excinfo:
@@ -159,10 +141,7 @@ def test_missing_workflow_job(monkeypatch: pytest.MonkeyPatch) -> None:
     assert msg == "workflow_job"
 
 
-def test_no_secret_rejects_every_payload(
-    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
-) -> None:
-    monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
+def test_no_secret_rejects_every_payload(webhook_event: dict[str, Any]) -> None:
     handler = WebAppHandler()
     assert not handler.valid_signature(
         body=json.dumps(webhook_event["payload"]).encode(),
@@ -173,24 +152,32 @@ def test_no_secret_rejects_every_payload(
 def test_missing_signature_is_invalid(
     monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
 ) -> None:
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
     handler = WebAppHandler()
     assert not handler.valid_signature(
         body=json.dumps(webhook_event["payload"]).encode(), headers={}
     )
 
 
+def test_non_ascii_signature_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    handler = WebAppHandler()
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": "sha256=\u00e9"},
+    )
+
+
 def test_valid_signature(
     monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
 ) -> None:
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
     handler = WebAppHandler()
-    assert (
-        handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
-            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
-        )
-        == True
+    assert handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
     )
 
 
@@ -199,20 +186,16 @@ def test_invalid_signature(
 ) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "mistyped_secret")
     handler = WebAppHandler()
-    # This is unit testing that the function works as expected
-    assert (
-        handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
-            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
-        )
-        == False
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
     )
 
 
 def test_handle_event_with_secret(
     monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
 ) -> None:
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
     handler = WebAppHandler(dry_run=True)
     reason, http_code = handler.handle_event(
         data=webhook_event["payload"],
@@ -224,12 +207,11 @@ def test_handle_event_with_secret(
 
 @responses.activate
 def test_workflow_run_sends_commit_trace(
-    monkeypatch: pytest.MonkeyPatch, gh_app_env: None
+    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
+    commit_webhook_payload: dict[str, Any],
+    commit_runs: dict[str, Any],
 ) -> None:
-    with open("tests/fixtures/commit/webhook_payload.json") as f:
-        payload = json.load(f)
-    with open("tests/fixtures/commit/runs.json") as f:
-        runs = json.load(f)
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
@@ -238,15 +220,15 @@ def test_workflow_run_sends_commit_trace(
     responses.delete("https://api.github.com/installation/token")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("https://foo@random.ingest.sentry.io/1234"),
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
     )
     runs_url = responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=runs
+        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=commit_runs
     )
     envelope = responses.post("https://random.ingest.sentry.io/api/1234/envelope/")
 
     reason, http_code = WebAppHandler().handle_event(
-        data=payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
 
     assert (reason, http_code) == ("OK", 200)
@@ -283,11 +265,10 @@ def test_repository_webhook_in_github_app_mode_is_rejected(
 def test_repository_webhook_uses_the_token(
     mock_metrics: MagicMock, monkeypatch: pytest.MonkeyPatch, jobA_job: dict[str, Any]
 ) -> None:
-    monkeypatch.delenv("GH_APP_ID", raising=False)
     monkeypatch.setenv("GH_TOKEN", "pat")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("dsn: <>"),
+        json=sentry_config_response("dsn: <>"),
     )
 
     handler = WebAppHandler()
@@ -365,15 +346,17 @@ def test_repository_name_with_a_path_is_rejected(
 
 @responses.activate
 def test_run_outside_the_payload_repository_is_rejected(
-    monkeypatch: pytest.MonkeyPatch, gh_app_env: None
+    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
+    commit_webhook_payload: dict[str, Any],
 ) -> None:
-    with open("tests/fixtures/commit/webhook_payload.json") as f:
-        payload = json.load(f)
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
-    payload["workflow_run"]["repository"]["full_name"] = "getsentry/private"
+    commit_webhook_payload["workflow_run"]["repository"][
+        "full_name"
+    ] = "getsentry/private"
 
     reason, http_code = WebAppHandler().handle_event(
-        data=payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
     assert reason == "The payload's workflow doesn't belong to its repository."
     assert http_code == 400
