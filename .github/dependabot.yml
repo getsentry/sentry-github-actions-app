@@ -4,7 +4,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Wait a week after a release, so a compromised or broken one is likely
+    # caught before Dependabot proposes it.
+    cooldown:
+      default-days: 7
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
