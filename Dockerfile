@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.15-slim AS builder
+FROM python:3.15.2-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/
 # Compile bytecode for faster startup, and copy files out of uv's cache so the
 # virtualenv can be copied to the execution stage
@@ -9,7 +9,7 @@ COPY pyproject.toml uv.lock /app/
 RUN uv sync --locked --no-dev --no-cache
 
 # Execution stage
-FROM python:3.15-slim
+FROM python:3.15.2-slim
 # Send output to Cloud Run logs right away instead of buffering it.
 ENV PYTHONUNBUFFERED=1
 # Cloud Run sets PORT. Without --bind, gunicorn listens on 0.0.0.0:$PORT.
