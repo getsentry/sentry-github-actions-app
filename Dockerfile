@@ -16,6 +16,8 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 # Source code
 COPY src/ /app/src/
+# The app doesn't write to disk, so it doesn't need root.
+USER nobody
 # 1 worker, 4 worker threads should be more than enough.
 # --worker-class gthread is automatically set if --threads > 1.
 # In my experience this configuration hovers around 100 MB
