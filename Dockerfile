@@ -10,6 +10,10 @@ RUN uv sync --locked --no-dev --no-cache
 
 # Execution stage
 FROM python:3.15-slim
+# Send output to Cloud Run logs right away instead of buffering it.
+ENV PYTHONUNBUFFERED=1
+# Cloud Run sets PORT. Without --bind, gunicorn listens on 0.0.0.0:$PORT.
+ENV PORT=8080
 WORKDIR /app
 # Retrieve packages from build stage
 COPY --from=builder /app/.venv /app/.venv
@@ -25,4 +29,4 @@ USER nobody
 # --timeout 0 disables gunicorn's automatic worker restarting.
 # "Workers silent for more than this many seconds are killed and restarted."
 # If things get bad you might want to --max-requests, --max-requests-jitter, --workers 2.
-CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "4", "--timeout", "0", "src.main:create_app()"]
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "--timeout", "0", "src.main:create_app()"]
