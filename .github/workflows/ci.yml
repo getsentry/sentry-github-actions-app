@@ -96,11 +96,6 @@ jobs:
         run: |
           uv run pytest
 
-      # Third-party, so pin it to a commit that a moved tag can't change
-      - uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
-        with:
-          verbose: true # optional (default = false)
-
   typing:
     name: Type checks
     runs-on: ubuntu-latest
