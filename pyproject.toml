@@ -8,7 +8,7 @@ authors = [
 license-expression = "MIT"
 requires-python = ">=3.15"
 dependencies = [
-    "cachetools==5.3.2",
+    "cachetools==7.3.0",
     "flask==2.3.3",
     "google-cloud-secret-manager==2.31.0",
     "gunicorn==26.2.0",
