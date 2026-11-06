@@ -47,4 +47,6 @@ def test_every_request_has_a_timeout(
         "/installation/token",
     }
     for call in responses.calls:
-        assert call.request.req_kwargs["timeout"] == REQUEST_TIMEOUT, call.request.url
+        # responses sets req_kwargs at runtime; PreparedRequest doesn't declare it.
+        req_kwargs = call.request.req_kwargs  # type: ignore[attr-defined]
+        assert req_kwargs["timeout"] == REQUEST_TIMEOUT, call.request.url
