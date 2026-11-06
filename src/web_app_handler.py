@@ -211,18 +211,13 @@ def get_gh_app_private_key() -> str:
 
 def init_config() -> Config:
     gh_app = None
-    try:
-        # This variable is the key to enabling Github App mode or not
-        if os.environ.get("GH_APP_ID"):
-            private_key = get_gh_app_private_key()
-            gh_app = GithubAppConfig(
-                app_id=os.environ["GH_APP_ID"],
-                private_key=private_key,
-            )
-    except Exception as e:
-        logger.exception(e)
-        logger.warning(
-            "We have failed to load the private key, however, we will fallback to the PAT method.",
+    # This variable is the key to enabling Github App mode or not. If the key doesn't
+    # load, fail rather than fall back to GH_TOKEN: in that mode every installation's
+    # webhooks would run with one person's token.
+    if os.environ.get("GH_APP_ID"):
+        gh_app = GithubAppConfig(
+            app_id=os.environ["GH_APP_ID"],
+            private_key=get_gh_app_private_key(),
         )
 
     webhook_secret = os.environ.get("GH_WEBHOOK_SECRET")
