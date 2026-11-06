@@ -14,7 +14,7 @@ dependencies = [
     "gunicorn==26.2.0",
     "pyjwt[crypto]==2.15.1",
     "requests==2.34.2",
-    "sentry-sdk[flask]==2.71.0",
+    "sentry-sdk[flask]==2.74.0",
 ]
 
 [project.urls]
