@@ -61,6 +61,17 @@ jobs:
         run: |
           docker build -t docker-app .
 
+      # Fail only on high or critical vulnerabilities that have a fix, such as a newer
+      # base image or Python release. Most of the base image's OS findings have no fix.
+      - name: Scan image for vulnerabilities
+        # Third-party, so pin it to a commit that a moved tag can't change
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: docker-app
+          only-fixed: true
+          severity-cutoff: high
+          output-format: table
+
       # A healthy app answers an unsigned webhook with a 400. If gunicorn can't load
       # the app, the container exits and curl gets no response.
       - name: Test starting
