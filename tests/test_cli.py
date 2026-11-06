@@ -22,4 +22,6 @@ def test_fetch_job_is_authenticated_with_a_timeout() -> None:
     assert cli._fetch_job("getsentry", "sentry", "1", "installation_token") == {"id": 1}
     (call,) = responses.calls
     assert call.request.headers["Authorization"] == "token installation_token"
-    assert call.request.req_kwargs["timeout"] == REQUEST_TIMEOUT
+    # responses sets req_kwargs at runtime; PreparedRequest doesn't declare it.
+    req_kwargs = call.request.req_kwargs  # type: ignore[attr-defined]
+    assert req_kwargs["timeout"] == REQUEST_TIMEOUT
