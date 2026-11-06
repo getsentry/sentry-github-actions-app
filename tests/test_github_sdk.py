@@ -35,8 +35,8 @@ def test_skipped_job_is_not_sent(skipped_workflow: dict[str, Any]) -> None:
             "https://o1.ingest.us.sentry.io/api/1234/envelope/",
         ),
         (
-            "http://foo:secret@sentry.example.com:9000/sentry/1234",
-            "http://sentry.example.com:9000/sentry/api/1234/envelope/",
+            "https://foo:secret@sentry.io:8443/sentry/1234",
+            "https://sentry.io:8443/sentry/api/1234/envelope/",
         ),
     ],
 )
@@ -55,6 +55,12 @@ def test_initialize_with_dsn(dsn: str, sentry_project_url: str) -> None:
         "https://random.ingest.sentry.io/1234",
         "https://foo@random.ingest.sentry.io/",
         "https://foo@random.ingest.sentry.io/1234/",
+        # Only Sentry's hosts, over HTTPS
+        "https://foo@sentryalert.ru/1234",
+        "https://foo@evilsentry.io/1234",
+        "https://foo@sentry.io.example.com/1234",
+        "http://foo@random.ingest.sentry.io/1234",
+        "http://foo:secret@sentry.example.com:9000/sentry/1234",
     ],
 )
 def test_initialize_with_invalid_dsn(dsn: str) -> None:
