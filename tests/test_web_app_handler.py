@@ -361,3 +361,14 @@ def test_run_outside_the_payload_repository_is_rejected(
     assert reason == "The payload's workflow doesn't belong to its repository."
     assert http_code == 400
     assert len(responses.calls) == 0
+
+
+def test_unloadable_app_key_does_not_fall_back_to_the_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GH_APP_ID", "1")
+    monkeypatch.setenv("GH_TOKEN", "pat")
+    # GH_APP_PRIVATE_KEY is unset
+
+    with pytest.raises(KeyError):
+        WebAppHandler()

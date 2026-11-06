@@ -16,7 +16,7 @@ A Sentry project tracks errors of the backend itself. Its DSN is `APP_DSN`.
 | `GH_WEBHOOK_SECRET` | Required. Secret shared with the GitHub webhook. The app rejects requests that aren't signed with it, and rejects every request when it's unset. Generate one with `python3 -c 'import secrets; print(secrets.token_urlsafe(20))'`. |
 | `GH_APP_ID` | GitHub App ID, shown on the GitHub App page. Setting it turns on GitHub App mode. |
 | `GH_APP_PRIVATE_KEY` | Base64-encoded GitHub App private key. On Cloud Run (`K_SERVICE` set) without this variable, the app reads the key from Google Secret Manager instead. See `get_gh_app_private_key` in `src/web_app_handler.py`. |
-| `GH_TOKEN` | Optional personal access token. The app uses it when `GH_APP_ID` is unset or the private key fails to load. |
+| `GH_TOKEN` | Optional personal access token. The app uses it only when `GH_APP_ID` is unset. With `GH_APP_ID` set, the app doesn't start if the private key fails to load. |
 | `COMMIT_TRACES_ENABLED` | Set to `true` or `1` to send `ci.commit` transactions. Requires the **Workflow run** event subscription. |
 | `LOGGING_LEVEL` | Optional Python logging level. Defaults to `INFO`. |
 | `FLASK_ENV` | Sets the `APP_DSN` environment. Defaults to `production`. `development` adds the `/debug-sentry` route. |
