@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 import requests
 from sentry_sdk.envelope import Envelope
+from sentry_sdk.utils import BadDsn
 from sentry_sdk.utils import Dsn
 from sentry_sdk.utils import format_timestamp
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from sentry_sdk._types import Event
 
 GITHUB_API_URL = "https://api.github.com"
+SENTRY_HOST = "sentry.io"
 
 
 class GithubSentryError(Exception):
@@ -46,7 +48,14 @@ class GithubClient:
         self.token = token
         self.dry_run = dry_run
         # Orgs write the DSN into their .sentry repo by hand; raises BadDsn if it's invalid
-        auth = Dsn(dsn).to_auth()
+        parsed = Dsn(dsn)
+        # Envelopes carry the org's CI data, so only post them to Sentry over HTTPS
+        host: str = parsed.host
+        if parsed.scheme != "https" or not (
+            host == SENTRY_HOST or host.endswith(f".{SENTRY_HOST}")
+        ):
+            raise BadDsn(f"Not a Sentry DSN host: {parsed.scheme}://{host}")
+        auth = parsed.to_auth()
         self.sentry_key = auth.public_key
         # '{SCHEME}://{HOST}{PATH}api/{PROJECT_ID}/envelope/'
         self.sentry_project_url = auth.get_api_url()
