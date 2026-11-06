@@ -71,6 +71,9 @@ jobs:
           only-fixed: true
           severity-cutoff: high
           output-format: table
+          # Restore the vulnerability database from the Actions cache before checking
+          # it for updates, instead of downloading it on every run.
+          cache-db: true
 
       # A healthy app answers an unsigned webhook with a 400. If gunicorn can't load
       # the app, the container exits and curl gets no response.
@@ -148,6 +151,14 @@ jobs:
       - name: Set up
         run: |
           uv sync --locked
+
+      # Without this, every run rebuilds every hook's environment, which is most of
+      # the job's time. pre-commit rebuilds any cached environment that's broken.
+      - name: Cache pre-commit environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run hooks
         run: |
