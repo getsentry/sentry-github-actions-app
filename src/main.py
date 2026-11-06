@@ -14,6 +14,7 @@ from flask import Response
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.scrubber import EventScrubber
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from .web_app_handler import WebAppHandler
 
@@ -50,16 +51,35 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 logger.info("App logging is working.")
 
+# GitHub doesn't deliver webhook payloads larger than this
+MAX_PAYLOAD_BYTES = 25 * 1024 * 1024
+
+
+def _skip_trace() -> None:
+    # Anyone can send requests that get rejected, so tracing them would let a
+    # flood of them use up the app's Sentry quota
+    transaction = sentry_sdk.get_current_scope().transaction
+    if transaction is not None:
+        transaction.sampled = False
+
 
 def create_app() -> Flask:
     # The handler reads its config (e.g. the GitHub App's private key) from the
     # environment, so build it when the app starts rather than on import
     handler = WebAppHandler()
     app = Flask(__name__)
+    # Reading the body to check its signature would otherwise read any size
+    app.config["MAX_CONTENT_LENGTH"] = MAX_PAYLOAD_BYTES
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def too_large(e: RequestEntityTooLarge) -> RequestEntityTooLarge:
+        _skip_trace()
+        return e
 
     @app.route("/", methods=["POST"])
     def main() -> tuple[Response, int]:
         if not handler.valid_signature(request.data, request.headers):
+            _skip_trace()
             abort(
                 400,
                 "The secret you are using on your Github webhook does not match this app's secret.",
