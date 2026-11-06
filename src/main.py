@@ -50,12 +50,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOGGING_LEVEL)
 logger.info("App logging is working.")
 
+# GitHub caps webhook payloads at 25 MB. Anyone can POST to the app, and it reads the
+# whole body to check the signature, so don't read more than a webhook can be.
+MAX_WEBHOOK_BYTES = 25 * 1024 * 1024
+
 
 def create_app() -> Flask:
     # The handler reads its config (e.g. the GitHub App's private key) from the
     # environment, so build it when the app starts rather than on import
     handler = WebAppHandler()
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = MAX_WEBHOOK_BYTES
 
     @app.route("/", methods=["POST"])
     def main() -> tuple[Response, int]:
