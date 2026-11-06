@@ -193,9 +193,9 @@ def get_gh_app_private_key() -> str:
         from google.cloud import secretmanager
 
         gcp_client = secretmanager.SecretManagerServiceClient()
-        uri = (
-            f"projects/sentry-dev-tooling/secrets/SentryGithubAppPrivateKey/versions/1"
-        )
+        # The latest version, so rotating the key only needs a new secret version and
+        # a new revision, not a code change
+        uri = "projects/sentry-dev-tooling/secrets/SentryGithubAppPrivateKey/versions/latest"
 
         logger.info(f"Grabbing secret from {uri}")
         private_key = base64.b64decode(
