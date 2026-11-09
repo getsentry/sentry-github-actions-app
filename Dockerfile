@@ -1,27 +1,39 @@
 # Build stage
-FROM python:3.15.2-slim AS builder
+FROM debian:trixie-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/
 # Compile bytecode for faster startup, and copy files out of uv's cache so the
 # virtualenv can be copied to the execution stage
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+# The execution stage has no Python, so use a uv-managed one under a fixed path
+# that gets copied over too. Pinning only the minor version lets each uv release
+# (bumped by Dependabot) bring the latest Python patch release.
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy \
+    UV_PYTHON=3.15 UV_PYTHON_PREFERENCE=only-managed UV_PYTHON_INSTALL_DIR=/python
+RUN uv python install
+# Drop what a webhook server never uses: headers, docs, pip, and Tcl/Tk
+RUN cd "$UV_PYTHON_INSTALL_DIR"/cpython-"$UV_PYTHON"-*/ \
+ && rm -rf include share bin/idle* bin/pip* lib/*tcl* lib/*tk* lib/thread* \
+      lib/python3.*/site-packages/pip* lib/python3.*/ensurepip lib/python3.*/idlelib \
+      lib/python3.*/tkinter lib/python3.*/turtledemo lib/python3.*/lib-dynload/_tkinter*
 WORKDIR /app
 COPY pyproject.toml uv.lock /app/
 RUN uv sync --locked --no-dev --no-cache
 
 # Execution stage
-FROM python:3.15.2-slim
+# Distroless has glibc and the C++ runtime that grpcio needs, but no shell or
+# package manager, so far fewer OS packages to carry vulnerabilities.
+# The nonroot tag runs as an unprivileged user; the app doesn't write to disk.
+FROM gcr.io/distroless/cc-debian13:nonroot
 # Send output to Cloud Run logs right away instead of buffering it.
 ENV PYTHONUNBUFFERED=1
 # Cloud Run sets PORT. Without --bind, gunicorn listens on 0.0.0.0:$PORT.
 ENV PORT=8080
 WORKDIR /app
-# Retrieve packages from build stage
+# Retrieve Python and packages from build stage
+COPY --from=builder /python /python
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 # Source code
 COPY src/ /app/src/
-# The app doesn't write to disk, so it doesn't need root.
-USER nobody
 # 1 worker, 4 worker threads should be more than enough.
 # --worker-class gthread is automatically set if --threads > 1.
 # In my experience this configuration hovers around 100 MB
