@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import io
 import logging
+import re
 import uuid
 from datetime import datetime
 from typing import Any
@@ -23,7 +24,10 @@ if TYPE_CHECKING:
     from sentry_sdk._types import Event
 
 GITHUB_API_URL = "https://api.github.com"
-SENTRY_HOST = "sentry.io"
+# sentry.io or a subdomain. Labels can only hold letters, digits, and hyphens: the DSN's
+# host can keep a backslash, which requests reads as the start of the path, so the
+# envelope for `evil.example\.sentry.io` would go to evil.example
+SENTRY_HOST_PATTERN = re.compile(r"(?:[a-z0-9-]+\.)*sentry\.io")
 
 
 class GithubSentryError(Exception):
@@ -51,9 +55,7 @@ class GithubClient:
         parsed = Dsn(dsn)
         # Envelopes carry the org's CI data, so only post them to Sentry over HTTPS
         host: str = parsed.host
-        if parsed.scheme != "https" or not (
-            host == SENTRY_HOST or host.endswith(f".{SENTRY_HOST}")
-        ):
+        if parsed.scheme != "https" or not SENTRY_HOST_PATTERN.fullmatch(host):
             raise BadDsn(f"Not a Sentry DSN host: {parsed.scheme}://{host}")
         auth = parsed.to_auth()
         self.sentry_key = auth.public_key

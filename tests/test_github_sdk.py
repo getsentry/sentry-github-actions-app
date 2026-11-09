@@ -61,6 +61,9 @@ def test_initialize_with_dsn(dsn: str, sentry_project_url: str) -> None:
         "https://foo@sentry.io.example.com/1234",
         "http://foo@random.ingest.sentry.io/1234",
         "http://foo:secret@sentry.example.com:9000/sentry/1234",
+        # requests would send these to evil.example
+        "https://foo@evil.example\\.sentry.io/1234",
+        "https://foo@evil.example\\.sentry.io:8443/1234",
     ],
 )
 def test_initialize_with_invalid_dsn(dsn: str) -> None:
