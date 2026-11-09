@@ -2,8 +2,10 @@ version: 2
 updates:
   - package-ecosystem: docker
     directory: /
+    # Base images are pinned by digest, so OS security fixes only reach the image
+    # through these PRs. Check daily so a fix doesn't also wait for a weekly run.
     schedule:
-      interval: weekly
+      interval: daily
     # Wait a week after a release, so a compromised or broken one is likely
     # caught before Dependabot proposes it.
     cooldown:
