@@ -2,23 +2,25 @@ version: 2
 updates:
   - package-ecosystem: docker
     directory: /
-    # Base images are pinned by digest, so OS security fixes only reach the image
-    # through these PRs. Check daily so a fix doesn't also wait for a weekly run.
+    # Dependabot has no security updates for Docker, and base images are pinned by
+    # digest, so OS security fixes only reach the image through these version
+    # updates. Check daily so a fix doesn't also wait for a weekly run.
     schedule:
       interval: daily
     # Wait a week after a release, so a compromised or broken one is likely
     # caught before Dependabot proposes it.
     cooldown:
       default-days: 7
+  # For the ecosystems below, update a dependency only when it has a security
+  # advisory. A limit of 0 turns off version updates, and Dependabot security
+  # updates still open PRs for vulnerable dependencies.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    cooldown:
-      default-days: 7
+    open-pull-requests-limit: 0
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
-    cooldown:
-      default-days: 7
+    open-pull-requests-limit: 0
