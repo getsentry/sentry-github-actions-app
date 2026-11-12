@@ -30,7 +30,7 @@ RUN uv sync --locked --no-dev --no-cache
 # Distroless has glibc and the C++ runtime that grpcio needs, but no shell or
 # package manager, so far fewer OS packages to carry vulnerabilities.
 # The nonroot tag runs as an unprivileged user; the app doesn't write to disk.
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cc66d222f0a7ec996b78a99fe76a969bc80b539a5016ad866c14d1949bc6d0ab
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2
 # Send output to Cloud Run logs right away instead of buffering it.
 ENV PYTHONUNBUFFERED=1
 # Cloud Run sets PORT. Without --bind, gunicorn listens on 0.0.0.0:$PORT.
