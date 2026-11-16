@@ -6,6 +6,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 import responses
 
 from src.sentry_config import SENTRY_CONFIG_API_URL as sentry_config_api_url
@@ -127,6 +128,99 @@ def test_invalid_dsn_is_a_warning(
     mock_metrics.count.assert_called_once_with(
         "invalid_dsn", 1, attributes={"owner": "getsentry"}
     )
+
+
+ACCESS_TOKENS_URL = "https://api.github.com/app/installations/1/access_tokens"
+CONFIG_URL = sentry_config_api_url.replace("{owner}", "getsentry")
+RUN_URL = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+ENVELOPE_URL = "https://random.ingest.sentry.io/api/1234/envelope/"
+
+
+@responses.activate
+@mock.patch("src.web_app_handler.metrics")
+@pytest.mark.parametrize(
+    "forbidden_url,host",
+    (
+        # e.g. a suspended installation
+        (ACCESS_TOKENS_URL, "api.github.com"),
+        (CONFIG_URL, "api.github.com"),
+        # e.g. a rate limit
+        (RUN_URL, "api.github.com"),
+        # e.g. the org's DSN was disabled
+        (ENVELOPE_URL, "random.ingest.sentry.io"),
+    ),
+)
+def test_forbidden_is_a_warning(
+    mock_metrics: MagicMock,
+    forbidden_url: str,
+    host: str,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, json={"token": "irrelevant"})
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        CONFIG_URL,
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
+    )
+    responses.get(RUN_URL, json=jobA_runs)
+    responses.post(ENVELOPE_URL)
+    # Only the one URL is refused
+    method = (
+        responses.POST
+        if forbidden_url in (ACCESS_TOKENS_URL, ENVELOPE_URL)
+        else responses.GET
+    )
+    responses.replace(method, forbidden_url, status=403)
+
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == f"{host} refused the request with a 403."
+    assert http_code == 200
+    # Errors get reported to Sentry; warnings don't
+    assert [r.levelname for r in caplog.records] == ["WARNING"]
+    assert (
+        caplog.records[0]
+        .getMessage()
+        .startswith(f"getsentry got a 403 from {host}: 403 Client Error")
+    )
+    mock_metrics.count.assert_called_once_with(
+        "forbidden", 1, attributes={"owner": "getsentry", "host": host}
+    )
+
+
+@responses.activate
+def test_other_http_errors_propagate(
+    gh_app_env: None, jobA_job: dict[str, Any]
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, status=500)
+
+    with pytest.raises(requests.HTTPError):
+        WebAppHandler().handle_event(
+            data={
+                "action": "completed",
+                "installation": {"id": 1},
+                "repository": {
+                    "full_name": "getsentry/sentry",
+                    "owner": {"login": "getsentry"},
+                },
+                "workflow_job": jobA_job,
+            },
+            headers={"X-GitHub-Event": "workflow_job"},
+        )
 
 
 def test_missing_workflow_job() -> None:
