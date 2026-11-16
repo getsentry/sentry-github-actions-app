@@ -15,6 +15,8 @@ steps:
       - build
       - --tag=${_IMAGE}:${COMMIT_SHA}
       - --tag=${_IMAGE}:latest
+      # Reported as the Sentry release; see the Dockerfile
+      - --build-arg=SENTRY_RELEASE=${COMMIT_SHA}
       - .
 images:
   - ${_IMAGE}:${COMMIT_SHA}

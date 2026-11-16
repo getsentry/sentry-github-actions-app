@@ -19,9 +19,9 @@ permissions:
 # .git/config for later steps, and the code they run, to read. No job pushes.
 
 jobs:
-  # In reality, this will not be completely accurate as only when a Docker image is deployed to GCP
-  # we will truly have a deployed release. Nevertheless, this will be useful once it is deployed
-  # since it will help add commits to releases
+  # Creates the release with its commits when the commit merges. The deployed image
+  # reports the same SHA as its release (see the Dockerfile), so the commits show up
+  # once it runs. Merging doesn't deploy, so this doesn't record a deploy.
   release:
     if: ${{ github.ref == 'refs/heads/main' }}
     name: Create a Sentry release
@@ -43,7 +43,6 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         with:
           projects: "sentry-github-actions-app"
-          environment: production
           # We have created releases from the PR, thus, the CLI gets confused finding commits
           ignore_missing: true
 
