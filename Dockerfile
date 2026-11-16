@@ -42,6 +42,11 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 # Source code
 COPY src/ /app/src/
+# The commit the image was built from. sentry-sdk reports it as the release, so
+# Sentry shows which commit runs in production. Cloud Build passes it in; without
+# it, the SDK falls back to the Cloud Run revision name (K_REVISION).
+ARG SENTRY_RELEASE
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 # 1 worker, 4 worker threads should be more than enough.
 # --worker-class gthread is automatically set if --threads > 1.
 # In my experience this configuration hovers around 100 MB
