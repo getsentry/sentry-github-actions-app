@@ -18,6 +18,10 @@ from tests.helpers import sentry_config_response
 from tests.helpers import WEBHOOK_SECRET
 
 TOKEN = "ghs_installationtokenvalue"
+# The org's DSN key, from its .sentry repo
+ORG_DSN_KEY = "0123456789abcdef0123456789abcdef"
+# Payload data that no request URL or exception message carries
+REPO_DESCRIPTION = "payload-only repository description"
 
 
 class CapturingTransport(Transport):
@@ -38,13 +42,14 @@ def app_sentry() -> Iterator[list[Any]]:
 
 
 @responses.activate
-def test_github_tokens_are_scrubbed_from_app_errors(
+def test_github_tokens_and_org_data_stay_out_of_app_errors(
     gh_app_env: None,
     app_sentry: list[Any],
     webhook_event: dict[str, Any],
 ) -> None:
     data = webhook_event["payload"]
     data["installation"] = {"id": 1}
+    data["repository"]["description"] = REPO_DESCRIPTION
     org = data["repository"]["owner"]["login"]
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
@@ -53,7 +58,7 @@ def test_github_tokens_are_scrubbed_from_app_errors(
     responses.delete("https://api.github.com/installation/token", status=204)
     responses.get(
         SENTRY_CONFIG_API_URL.replace("{owner}", org),
-        json=sentry_config_response("https://foo@o1.ingest.sentry.io/2"),
+        json=sentry_config_response(f"https://{ORG_DSN_KEY}@o1.ingest.sentry.io/2"),
     )
     # Fails after the token is in the request headers and the token response
     responses.get(data["workflow_job"]["run_url"], status=502)
@@ -76,4 +81,9 @@ def test_github_tokens_are_scrubbed_from_app_errors(
 
     assert resp.status_code == 500
     assert app_sentry, "the error should reach Sentry"
-    assert TOKEN not in json.dumps(app_sentry)
+    events = json.dumps(app_sentry)
+    assert TOKEN not in events
+    # Installations belong to other orgs, so their DSNs and (often private) CI data
+    # stay out of the app's own events
+    assert ORG_DSN_KEY not in events
+    assert REPO_DESCRIPTION not in events

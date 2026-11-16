@@ -28,10 +28,16 @@ def init_sentry(dsn: str, **options: Any) -> None:
         # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
         environment=os.environ.get("FLASK_ENV", "production"),
-        # GitHub tokens sit in dicts in the frames' local variables (e.g. the request
-        # `headers` and the access token response), and the default scrubber only
-        # checks top-level variable names
+        # The default scrubber only checks top-level names, so a token in a nested
+        # dict (e.g. `headers`) would get through
         event_scrubber=EventScrubber(recursive=True),
+        # Webhooks come from other orgs' installations, often for private repos. The
+        # frames' local variables and the request body hold their payloads (repo and
+        # job names, commit authors' emails), DSNs, and GitHub tokens, and the scrubber
+        # only removes known secret names, so leave both out of the app's own events.
+        # The X-GitHub-Delivery header still identifies the delivery.
+        include_local_variables=False,
+        max_request_body_size="never",
         **options,
     )
 
