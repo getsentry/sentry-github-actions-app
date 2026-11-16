@@ -4,7 +4,7 @@ This page covers Sentry's own deployment of the app and its GitHub App. Users in
 
 ## Backend deployment
 
-The app runs on Google Cloud Run. Google Cloud Build builds a Docker image when code merges to `main`. To release it, log in to Google Cloud Run and deploy the latest image. The GitHub App's webhook URL points at this deployment.
+The app runs on Google Cloud Run. Google Cloud Build builds a Docker image with [`cloudbuild.yaml`](../cloudbuild.yaml) when code merges to `main`, and tags it with the commit SHA and `latest`. To release it, log in to Google Cloud Run and deploy the image by one of those tags. The GitHub App's webhook URL points at this deployment.
 
 A Sentry project tracks errors of the backend itself. Its DSN is `APP_DSN`.
 
