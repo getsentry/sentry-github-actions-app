@@ -9,7 +9,9 @@ from typing import Any
 from typing import Callable
 from typing import Mapping
 from typing import NamedTuple
+from urllib.parse import urlsplit
 
+import requests
 from sentry_sdk import metrics
 from sentry_sdk.utils import BadDsn
 from werkzeug.datastructures import Headers
@@ -112,6 +114,16 @@ class WebAppHandler:
             logger.warning("%s has an invalid DSN in its sentry_config.ini: %s", org, e)
             metrics.count("invalid_dsn", 1, attributes={"owner": org})
             return "The DSN in the org's .sentry/sentry_config.ini is invalid.", 200
+        except requests.HTTPError as e:
+            if e.response is None or e.response.status_code != 403:
+                raise
+            # GitHub or the org's Sentry project refused us (e.g. a suspended
+            # installation, a disabled DSN, or a rate limit). It's up to the org or
+            # the remote end, so this isn't an error on our end.
+            host = urlsplit(e.response.url).hostname or ""
+            logger.warning("%s got a 403 from %s: %s", org, host, e)
+            metrics.count("forbidden", 1, attributes={"owner": org, "host": host})
+            return f"{host} refused the request with a 403.", 200
         return "OK", 200
 
     def _send_with_token(
