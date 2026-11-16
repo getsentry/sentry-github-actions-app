@@ -1,0 +1,21 @@
+# Build config for the Cloud Build trigger that runs on merges to main.
+#
+# Each build pushes the tagged image index plus untagged child manifests: the
+# platform image and BuildKit attestations. Cloud Run can't deploy an
+# attestation ("got 1 Manifest.Layers vs 0 ConfigFile.RootFS.DiffIDs"), so
+# deploy by tag. The `latest` tag makes the newest build easy to pick.
+substitutions:
+  _IMAGE: gcr.io/${PROJECT_ID}/sentry-github-actions-app
+options:
+  # Lets _IMAGE use PROJECT_ID
+  dynamicSubstitutions: true
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=${_IMAGE}:${COMMIT_SHA}
+      - --tag=${_IMAGE}:latest
+      - .
+images:
+  - ${_IMAGE}:${COMMIT_SHA}
+  - ${_IMAGE}:latest
