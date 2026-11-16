@@ -1,0 +1,24 @@
+# Build config for the Cloud Build trigger that runs on merges to main.
+#
+# BuildKit attaches provenance and SBOM attestations by default. Each one is
+# pushed as an extra untagged manifest next to the image, and Cloud Run fails
+# to deploy it if it gets picked ("got 1 Manifest.Layers vs 0
+# ConfigFile.RootFS.DiffIDs"). Turning them off leaves only the image, tagged
+# with the commit SHA and `latest`.
+substitutions:
+  _IMAGE: gcr.io/${PROJECT_ID}/sentry-github-actions-app
+options:
+  # Lets _IMAGE use PROJECT_ID
+  dynamicSubstitutions: true
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --provenance=false
+      - --sbom=false
+      - --tag=${_IMAGE}:${COMMIT_SHA}
+      - --tag=${_IMAGE}:latest
+      - .
+images:
+  - ${_IMAGE}:${COMMIT_SHA}
+  - ${_IMAGE}:latest
