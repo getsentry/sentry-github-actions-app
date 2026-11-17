@@ -82,7 +82,8 @@ class GithubClient:
         runs = self._fetch_github(job["run_url"]).json()
         repo = runs["repository"]["full_name"]
         meta: dict[str, Any] = {
-            "author": runs["head_commit"]["author"],
+            # GitHub sends `head_commit: null` for some runs
+            "author": (runs.get("head_commit") or {}).get("author") or {},
             # https://getsentry.atlassian.net/browse/TET-22
             # Tags are not linkified externally, plain text data can be selected in browsers and opened
             "data": {
