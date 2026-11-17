@@ -81,7 +81,10 @@ def _fetch_config(org: str, token: str | None) -> OrgConfig:
     file_contents = base64.b64decode(meta["content"]).decode()
 
     # - Read ini file and assertions
-    cp = ConfigParser()
+    # Anyone can install the app and write this file. Interpolation expands nested
+    # `%(key)s` references without a size limit, so a few hundred bytes can hold the
+    # thread (and memory) for hours. No value needs it.
+    cp = ConfigParser(interpolation=None)
     cp.read_string(file_contents)
     section = "sentry-github-actions-app"
     # e.g. `commit_workflows = backend.yml, frontend.yml`

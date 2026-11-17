@@ -137,3 +137,15 @@ def test_commit_workflows_default_to_every_workflow() -> None:
     assert fetch_config_for_github_org(
         org, token, installation_id
     ).commit_workflows == (frozenset())
+
+
+@responses.activate
+def test_values_are_not_interpolated() -> None:
+    # Each level doubles the value; with more references per level, a few hundred
+    # bytes would expand to gigabytes
+    nested = "".join(f"v{i} = %(v{i - 1})s%(v{i - 1})s\n" for i in range(1, 10))
+    responses.get(
+        org_api_url,
+        json=sentry_config_response("%(v9)s", f"v0 = x\n{nested}"),
+    )
+    assert fetch_dsn_for_github_org(org, token, installation_id) == "%(v9)s"
