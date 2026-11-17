@@ -124,6 +124,18 @@ def test_trace_generation(
 
 
 @responses.activate
+def test_trace_generation_without_head_commit(
+    jobA_job: dict[str, Any], jobA_runs: dict[str, Any]
+) -> None:
+    jobA_runs["head_commit"] = None
+    responses.get(jobA_job["run_url"], json=jobA_runs)
+
+    trace = GithubClient(dsn=DSN, token=TOKEN)._generate_trace(jobA_job)
+
+    assert trace["user"] == {}
+
+
+@responses.activate
 def test_trace_generation_with_failing_steps(
     failure_job: dict[str, Any], failure_runs: dict[str, Any]
 ) -> None:

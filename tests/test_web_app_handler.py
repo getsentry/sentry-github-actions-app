@@ -203,6 +203,79 @@ def test_forbidden_is_a_warning(
 
 
 @responses.activate
+@mock.patch("src.web_app_handler.metrics")
+@pytest.mark.parametrize(
+    "failing_url,host",
+    (
+        (ACCESS_TOKENS_URL, "api.github.com"),
+        (CONFIG_URL, "api.github.com"),
+        (RUN_URL, "api.github.com"),
+        (ENVELOPE_URL, "random.ingest.sentry.io"),
+    ),
+)
+@pytest.mark.parametrize(
+    "error",
+    (
+        requests.ConnectTimeout(),
+        requests.ReadTimeout(),
+        requests.ConnectionError("Connection reset by peer"),
+        requests.exceptions.SSLError(),
+    ),
+)
+def test_network_error_is_a_warning(
+    mock_metrics: MagicMock,
+    error: requests.RequestException,
+    failing_url: str,
+    host: str,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, json={"token": "irrelevant"})
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        CONFIG_URL,
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
+    )
+    responses.get(RUN_URL, json=jobA_runs)
+    responses.post(ENVELOPE_URL)
+    # Only the request to the one URL fails
+    method = (
+        responses.POST
+        if failing_url in (ACCESS_TOKENS_URL, ENVELOPE_URL)
+        else responses.GET
+    )
+    responses.replace(method, failing_url, body=error)
+
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == f"The request to {host} failed with a network error."
+    assert http_code == 200
+    # Errors get reported to Sentry; warnings don't
+    assert [r.levelname for r in caplog.records] == ["WARNING"]
+    assert (
+        caplog.records[0]
+        .getMessage()
+        .startswith(f"getsentry hit a network error talking to {host}")
+    )
+    mock_metrics.count.assert_called_once_with(
+        "network_error", 1, attributes={"owner": "getsentry", "host": host}
+    )
+
+
+@responses.activate
 def test_other_http_errors_propagate(
     gh_app_env: None, jobA_job: dict[str, Any]
 ) -> None:

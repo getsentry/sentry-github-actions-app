@@ -124,6 +124,15 @@ class WebAppHandler:
             logger.warning("%s got a 403 from %s: %s", org, host, e)
             metrics.count("forbidden", 1, attributes={"owner": org, "host": host})
             return f"{host} refused the request with a 403.", 200
+        except (requests.ConnectionError, requests.Timeout) as e:
+            # A timeout, reset, or TLS failure talking to GitHub or the org's Sentry
+            # project. The trace is lost either way, and there's nothing to fix on our
+            # end, so count it rather than report it. (SSLError is a ConnectionError.)
+            url = e.request.url if e.request else None
+            host = urlsplit(url or "").hostname or ""
+            logger.warning("%s hit a network error talking to %s: %s", org, host, e)
+            metrics.count("network_error", 1, attributes={"owner": org, "host": host})
+            return f"The request to {host} failed with a network error.", 200
         return "OK", 200
 
     def _send_with_token(
