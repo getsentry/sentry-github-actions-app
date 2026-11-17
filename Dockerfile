@@ -1,20 +1,52 @@
+# Each image is pinned to its multi-arch index digest, so CI scans the same image
+# that Cloud Build later ships. The tag only documents what the digest is, and
+# Dependabot proposes a new digest when the tag gets rebuilt.
+
+# Dependabot only updates images in FROM lines, not in COPY --from, so uv gets
+# its own stage.
+FROM ghcr.io/astral-sh/uv:0.13.8@sha256:5cc1805e2426484abca4ad46ea783bab281fdb225fd82d8ce6d66a81254bac85 AS uv
+
 # Build stage
-FROM python:3.11-slim AS builder
-RUN pip install -U pip setuptools wheel
-# Copy files
-COPY requirements.frozen.txt /project/
-WORKDIR /project
-RUN pip install --no-cache-dir -r requirements.frozen.txt
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS builder
+COPY --from=uv /uv /bin/
+# Compile bytecode for faster startup, and copy files out of uv's cache so the
+# virtualenv can be copied to the execution stage
+# The execution stage has no Python, so use a uv-managed one under a fixed path
+# that gets copied over too. Pinning only the minor version lets each uv release
+# (bumped by Dependabot) bring the latest Python patch release.
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy \
+    UV_PYTHON=3.15 UV_PYTHON_PREFERENCE=only-managed UV_PYTHON_INSTALL_DIR=/python
+RUN uv python install
+# Drop what a webhook server never uses: headers, docs, pip, and Tcl/Tk
+RUN cd "$UV_PYTHON_INSTALL_DIR"/cpython-"$UV_PYTHON"-*/ \
+ && rm -rf include share bin/idle* bin/pip* lib/*tcl* lib/*tk* lib/thread* \
+      lib/python3.*/site-packages/pip* lib/python3.*/ensurepip lib/python3.*/idlelib \
+      lib/python3.*/tkinter lib/python3.*/turtledemo lib/python3.*/lib-dynload/_tkinter*
+WORKDIR /app
+COPY pyproject.toml uv.lock /app/
+RUN uv sync --locked --no-dev --no-cache
 
 # Execution stage
-FROM python:3.11-slim
+# Distroless has glibc and the C++ runtime that grpcio needs, but no shell or
+# package manager, so far fewer OS packages to carry vulnerabilities.
+# The nonroot tag runs as an unprivileged user; the app doesn't write to disk.
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2
+# Send output to Cloud Run logs right away instead of buffering it.
+ENV PYTHONUNBUFFERED=1
+# Cloud Run sets PORT. Without --bind, gunicorn listens on 0.0.0.0:$PORT.
+ENV PORT=8080
 WORKDIR /app
-COPY src/ /project/src
-# Retrieve packages from build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
-RUN pip install gunicorn==20.1.0
+# Retrieve Python and packages from build stage
+COPY --from=builder /python /python
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 # Source code
 COPY src/ /app/src/
+# The commit the image was built from. sentry-sdk reports it as the release, so
+# Sentry shows which commit runs in production. Cloud Build passes it in; without
+# it, the SDK falls back to the Cloud Run revision name (K_REVISION).
+ARG SENTRY_RELEASE
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 # 1 worker, 4 worker threads should be more than enough.
 # --worker-class gthread is automatically set if --threads > 1.
 # In my experience this configuration hovers around 100 MB
@@ -22,4 +54,4 @@ COPY src/ /app/src/
 # --timeout 0 disables gunicorn's automatic worker restarting.
 # "Workers silent for more than this many seconds are killed and restarted."
 # If things get bad you might want to --max-requests, --max-requests-jitter, --workers 2.
-CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "4", "--timeout", "0", "src.main:app"]
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "--timeout", "0", "src.main:create_app()"]

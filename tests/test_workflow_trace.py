@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+from typing import Any
 
 import pytest
 import responses
@@ -10,37 +10,42 @@ from src.github_sdk import _run_jobs_url
 from src.github_sdk import GithubClient
 from src.sentry_config import SENTRY_CONFIG_API_URL
 from src.web_app_handler import WebAppHandler
-from tests.test_sentry_config_file import config_file_meta
+from tests.helpers import sentry_config_response
 
 DSN = "https://foo@random.ingest.sentry.io/1234"
 ENVELOPE_URL = "https://random.ingest.sentry.io/api/1234/envelope/"
 
 
 @pytest.fixture
-def webhook_payload():
-    with open("tests/fixtures/commit/webhook_payload.json") as f:
-        return json.load(f)
+def workflow_run(commit_webhook_payload: dict[str, Any]) -> dict[str, Any]:
+    run: dict[str, Any] = commit_webhook_payload["workflow_run"]
+    return run
 
 
 @pytest.fixture
-def workflow_run(webhook_payload):
-    return webhook_payload["workflow_run"]
-
-
-@pytest.fixture
-def jobs(jobA_job, failure_job, skipped_workflow):
+def jobs(
+    jobA_job: dict[str, Any],
+    failure_job: dict[str, Any],
+    skipped_workflow: dict[str, Any],
+) -> dict[str, Any]:
     return {"total_count": 3, "jobs": [jobA_job, failure_job, skipped_workflow]}
 
 
-def test_run_jobs_url(workflow_run):
+def test_run_jobs_url(workflow_run: dict[str, Any]) -> None:
     assert _run_jobs_url(workflow_run) == (
         "https://api.github.com/repos/getsentry/sentry/actions/runs/38468300492/jobs"
         "?per_page=100"
     )
 
 
-def test_workflow_trace(workflow_run, jobs, jobA_job, failure_job):
+def test_workflow_trace(
+    workflow_run: dict[str, Any],
+    jobs: dict[str, Any],
+    jobA_job: dict[str, Any],
+    failure_job: dict[str, Any],
+) -> None:
     trace = _generate_workflow_trace(workflow_run, jobs)
+    assert trace is not None
 
     assert trace["transaction"] == "backend"
     assert trace["contexts"]["trace"]["op"] == "ci.workflow"
@@ -69,20 +74,24 @@ def test_workflow_trace(workflow_run, jobs, jobA_job, failure_job):
     )
 
 
-def test_workflow_trace_skips_runs_with_more_jobs_than_a_page(workflow_run, jobs):
+def test_workflow_trace_skips_runs_with_more_jobs_than_a_page(
+    workflow_run: dict[str, Any], jobs: dict[str, Any]
+) -> None:
     jobs["total_count"] = 101
     assert _generate_workflow_trace(workflow_run, jobs) is None
 
 
 @responses.activate
-def test_skipped_run_makes_no_api_calls(workflow_run):
+def test_skipped_run_makes_no_api_calls(workflow_run: dict[str, Any]) -> None:
     workflow_run["conclusion"] = "skipped"
     assert GithubClient(dsn=DSN, token="t").send_workflow_trace(workflow_run) is None
     assert len(responses.calls) == 0
 
 
 @responses.activate
-def test_send_workflow_trace(workflow_run, jobs):
+def test_send_workflow_trace(
+    workflow_run: dict[str, Any], jobs: dict[str, Any]
+) -> None:
     responses.get(_run_jobs_url(workflow_run), json=jobs)
     responses.post(ENVELOPE_URL)
 
@@ -92,37 +101,46 @@ def test_send_workflow_trace(workflow_run, jobs):
 
 
 @pytest.mark.parametrize("orgs", ["", "other-org", "getsentry-fork"])
-def test_workflow_traces_are_opt_in_per_org(monkeypatch, webhook_payload, orgs):
-    monkeypatch.delenv("COMMIT_TRACES_ENABLED", raising=False)
+def test_workflow_traces_are_opt_in_per_org(
+    monkeypatch: pytest.MonkeyPatch, commit_webhook_payload: dict[str, Any], orgs: str
+) -> None:
     monkeypatch.setenv("WORKFLOW_TRACES_ORGS", orgs)
     reason, _ = WebAppHandler().handle_event(
-        data=webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
     assert reason == "Workflow run traces are not enabled."
 
 
 @responses.activate
-def test_failed_workflow_run_sends_workflow_trace(monkeypatch, webhook_payload, jobs):
-    monkeypatch.delenv("GH_APP_ID", raising=False)
-    monkeypatch.setenv("GH_TOKEN", "pat")
+def test_failed_workflow_run_sends_workflow_trace(
+    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
+    commit_webhook_payload: dict[str, Any],
+    commit_runs: dict[str, Any],
+    jobs: dict[str, Any],
+) -> None:
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
     monkeypatch.setenv("WORKFLOW_TRACES_ORGS", "other-org, getsentry")
-    webhook_payload["workflow_run"]["conclusion"] = "failure"
-    with open("tests/fixtures/commit/runs.json") as f:
-        runs = json.load(f)
+    workflow_run = commit_webhook_payload["workflow_run"]
+    workflow_run["conclusion"] = "failure"
 
+    responses.post(
+        "https://api.github.com/app/installations/1/access_tokens",
+        json={"token": "irrelevant"},
+    )
+    responses.delete("https://api.github.com/installation/token")
     responses.get(
         SENTRY_CONFIG_API_URL.replace("{owner}", "getsentry"),
-        json=config_file_meta(DSN),
+        json=sentry_config_response(DSN),
     )
-    jobs_url = responses.get(_run_jobs_url(webhook_payload["workflow_run"]), json=jobs)
+    jobs_url = responses.get(_run_jobs_url(workflow_run), json=jobs)
     runs_url = responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=runs
+        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=commit_runs
     )
     responses.post(ENVELOPE_URL)
 
     reason, http_code = WebAppHandler().handle_event(
-        data=webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
 
     assert (reason, http_code) == ("OK", 200)

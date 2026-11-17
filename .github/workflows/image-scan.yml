@@ -1,0 +1,60 @@
+name: Image vulnerability scan
+
+on:
+  # New CVEs show up without any change here, so scan main every week
+  schedule:
+    # Mondays at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+  # On PRs, scan only when the scanned contents could change: the base images and the
+  # uv version (which picks the Python patch release) are pinned in the Dockerfile, and
+  # the Python packages in the image come from uv.lock.
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "uv.lock"
+      - ".github/workflows/image-scan.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  # Not in the required-checks list: it doesn't run on every PR, and a new CVE in the
+  # base image shouldn't block unrelated merges. A failed run still shows as a failed
+  # check, so findings stay visible.
+  image-scan:
+    name: Image vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Reuses the layers that the Docker build job in CI caches. It only reads the
+      # cache, so the two jobs don't both write it.
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: docker-app
+          cache-from: type=gha
+
+      # Fail only on high or critical vulnerabilities that have a fix, such as a newer
+      # base image or Python release. Most of the base image's OS findings have no fix.
+      - name: Scan image for vulnerabilities
+        # Third-party, so pin it to a commit that a moved tag can't change
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: docker-app
+          only-fixed: true
+          severity-cutoff: high
+          output-format: table
+          # Restore the vulnerability database from the Actions cache before checking
+          # it for updates, instead of downloading it on every run.
+          cache-db: true

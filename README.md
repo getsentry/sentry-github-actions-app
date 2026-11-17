@@ -1,7 +1,5 @@
 # Sentry GitHub Actions App
 
-[![codecov](https://codecov.io/gh/getsentry/sentry-github-actions-app/branch/main/graph/badge.svg?token=LVWHH6NYTF)](https://codecov.io/gh/getsentry/sentry-github-actions-app)
-
 **NOTE**: If this is a project you would like us to invest in, please let us know in [this issue](https://github.com/getsentry/sentry-github-actions-app/issues/46). You can try this app by following the steps in the "Try it out" section below.
 
 [This app](https://github.com/apps/sentry-github-app-alpha) allows your organization to instrument GitHub Actions with Sentry. You can use this to get insights of what parts of your CI are slow or failing often.

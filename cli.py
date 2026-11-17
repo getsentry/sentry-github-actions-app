@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from typing import Any
 
 import requests
 
@@ -26,20 +27,21 @@ def _parse_job_url(url: str) -> tuple[str, str, str]:
     return org, repo, job_id
 
 
-def _fetch_job(org: str, repo: str, job_id: str, token: str) -> dict:
+def _fetch_job(org: str, repo: str, job_id: str, token: str) -> dict[str, Any]:
     req = requests.get(
         f"https://api.github.com/repos/{org}/{repo}/actions/jobs/{job_id}",
         headers={"Authorization": f"token {token}"},
         timeout=REQUEST_TIMEOUT,
     )
     req.raise_for_status()
-    return req.json()
+    job: dict[str, Any] = req.json()
+    return job
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("url")
-    parser.add_argument("--installation-id")
+    parser.add_argument("--installation-id", type=int)
     args = parser.parse_args()
 
     org, repo, job_id = _parse_job_url(args.url)
@@ -49,16 +51,18 @@ def main() -> int:
         ), "If you try to use a non-default org, you also need to specify the installation ID."
 
     # You can have a default installation ID by using an env variable
-    installation_id = args.installation_id or os.environ["INSTALLATION_ID"]
+    installation_id: int = args.installation_id or int(os.environ["INSTALLATION_ID"])
 
-    web_app = WebAppHandler()
-    with GithubAppToken(**web_app.config.gh_app._asdict()).get_token(
+    gh_app = WebAppHandler().config.gh_app
+    assert gh_app is not None, "Set GH_APP_ID and GH_APP_PRIVATE_KEY."
+    with GithubAppToken(private_key=gh_app.private_key, app_id=gh_app.app_id).get_token(
         installation_id
     ) as token:
         job = _fetch_job(org, repo, job_id, token)
         dsn = fetch_dsn_for_github_org(org, token, installation_id)
         client = GithubClient(token=token, dsn=dsn)
         client.send_trace(job)
+    return 0
 
 
 if __name__ == "__main__":

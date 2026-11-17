@@ -2,24 +2,26 @@
 
 ## Set up
 
-If you use direnv, `.envrc` creates `.venv`, installs dependencies, and installs the pre-commit hooks. Otherwise, run:
+Install [uv](https://docs.astral.sh/uv/) (`brew install uv`). If you use direnv, `.envrc` syncs `.venv`, activates it, and installs the pre-commit hooks. Otherwise, run:
 
 ```shell
-python3 -m venv .venv
+uv sync
 source .venv/bin/activate
-pip install wheel
-pip install -r requirements.txt -r requirements-dev.txt
 pre-commit install
 ```
+
+`uv sync` installs the Python version that `pyproject.toml` requires if you don't have it, and the dependencies pinned in `uv.lock`.
+
+To add or upgrade a dependency, use `uv add <package>` (`uv add --dev <package>` for dev tools) or `uv lock --upgrade-package <package>`, and commit `uv.lock`.
 
 ## Commands
 
 | Command | Description |
 | --- | --- |
 | `flask run -p 5001` | Start the app on <http://localhost:5001>. `.flaskenv` sets `FLASK_APP=src.main`. |
-| `pytest` | Run the tests. |
-| `tox` | Run the tests in an isolated environment, as CI does. |
+| `pytest` | Run the tests, as CI does. |
 | `pytest --cov=src --cov-report=html` | Generate a coverage report. |
+| `mypy` | Type check the code in strict mode, as CI does. |
 | `pre-commit run --all-files` | Run the lint and format hooks, as CI does. |
 
 ## Ingest a single job
@@ -37,7 +39,7 @@ The argument must be a job URL. For a job in the `getsentry` org, you can set `I
 1. Start the app with `flask run -p 5001`.
 2. Start ngrok with `ngrok http 5001` and note the URL.
 3. Create a separate GitHub App for development, configured as in [deployment.md](deployment.md#configure-the-github-app), with its webhook URL set to the ngrok URL.
-4. Generate a private key for it and set `GH_APP_ID` and `GH_APP_PRIVATE_KEY` locally. Put secrets in `.env`, which `.envrc` loads.
+4. Generate a private key for it and set `GH_APP_ID`, `GH_APP_PRIVATE_KEY`, and the app's webhook secret as `GH_WEBHOOK_SECRET` locally. Put secrets in `.env`, which `.envrc` loads.
 5. Delete the private key from the GitHub App when you finish.
 
 Fixtures can carry old timestamps. Sentry then shows "Clock drift detected in SDK" on the transaction. You can ignore it.

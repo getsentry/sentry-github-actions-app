@@ -1,0 +1,7 @@
+# The image only copies pyproject.toml, uv.lock, and src/. Keep the rest out of
+# the build context.
+*
+!pyproject.toml
+!uv.lock
+!src/
+**/__pycache__

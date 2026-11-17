@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-import base64
 import json
+from typing import Any
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
+import requests
 import responses
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 
 from src.sentry_config import SENTRY_CONFIG_API_URL as sentry_config_api_url
 from src.web_app_handler import WebAppHandler
-from tests.test_sentry_config_file import config_file_meta
+from tests.helpers import sentry_config_response
+from tests.helpers import WEBHOOK_SECRET
 
 valid_signature = "d9259f51d3b64e7fe0cbe09d9b08b8ee763170d3521fecc35fd8b453be8cf6a5"
 
 
-def test_invalid_header():
+def test_invalid_header() -> None:
     handler = WebAppHandler()
     # This is missing X-GitHub-Event in the headers
     with pytest.raises(KeyError) as excinfo:
@@ -26,7 +27,7 @@ def test_invalid_header():
 
 
 # XXX: These tests could be covered with a JSON schema
-def test_invalid_github_event():
+def test_invalid_github_event() -> None:
     handler = WebAppHandler()
     # This has an invalid X-GitHub-Event value
     reason, http_code = handler.handle_event(
@@ -37,7 +38,7 @@ def test_invalid_github_event():
     assert http_code == 200
 
 
-def test_missing_action_key():
+def test_missing_action_key() -> None:
     handler = WebAppHandler()
     # This payload is missing the action key
     with pytest.raises(KeyError) as excinfo:
@@ -49,7 +50,7 @@ def test_missing_action_key():
     assert msg == "action"
 
 
-def test_not_completed_workflow():
+def test_not_completed_workflow() -> None:
     handler = WebAppHandler()
     # This payload has an an action state we cannot process
     reason, http_code = handler.handle_event(
@@ -60,21 +61,10 @@ def test_not_completed_workflow():
     assert http_code == 200
 
 
-@pytest.fixture
-def gh_app_env(monkeypatch):
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    monkeypatch.delenv("K_SERVICE", raising=False)
-    monkeypatch.setenv("GH_APP_ID", "1")
-    monkeypatch.setenv("GH_APP_PRIVATE_KEY", base64.b64encode(pem).decode())
-
-
 @responses.activate
-def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
+def test_skipped_job_makes_no_api_calls(
+    gh_app_env: None, skipped_workflow: dict[str, Any]
+) -> None:
     handler = WebAppHandler()
     # Only Github App mode mints an installation token
     assert handler.config.gh_app
@@ -82,7 +72,10 @@ def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
         data={
             "action": "completed",
             "installation": {"id": 1},
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": skipped_workflow,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -94,7 +87,12 @@ def test_skipped_job_makes_no_api_calls(gh_app_env, skipped_workflow):
 
 @responses.activate
 @mock.patch("src.web_app_handler.metrics")
-def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
+def test_invalid_dsn_is_a_warning(
+    mock_metrics: MagicMock,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
         json={"token": "irrelevant"},
@@ -102,7 +100,7 @@ def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
     responses.delete("https://api.github.com/installation/token")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("dsn: <>"),
+        json=sentry_config_response("dsn: <>"),
     )
 
     handler = WebAppHandler()
@@ -110,7 +108,10 @@ def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
         data={
             "action": "completed",
             "installation": {"id": 1},
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -129,9 +130,173 @@ def test_invalid_dsn_is_a_warning(mock_metrics, gh_app_env, jobA_job, caplog):
     )
 
 
-@pytest.mark.skip(reason="Not so important")
-def test_missing_workflow_job(monkeypatch):
-    monkeypatch.delenv("GH_APP_ID", raising=False)
+ACCESS_TOKENS_URL = "https://api.github.com/app/installations/1/access_tokens"
+CONFIG_URL = sentry_config_api_url.replace("{owner}", "getsentry")
+RUN_URL = "https://api.github.com/repos/getsentry/sentry/actions/runs/2104746951"
+ENVELOPE_URL = "https://random.ingest.sentry.io/api/1234/envelope/"
+
+
+@responses.activate
+@mock.patch("src.web_app_handler.metrics")
+@pytest.mark.parametrize(
+    "forbidden_url,host",
+    (
+        # e.g. a suspended installation
+        (ACCESS_TOKENS_URL, "api.github.com"),
+        (CONFIG_URL, "api.github.com"),
+        # e.g. a rate limit
+        (RUN_URL, "api.github.com"),
+        # e.g. the org's DSN was disabled
+        (ENVELOPE_URL, "random.ingest.sentry.io"),
+    ),
+)
+def test_forbidden_is_a_warning(
+    mock_metrics: MagicMock,
+    forbidden_url: str,
+    host: str,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, json={"token": "irrelevant"})
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        CONFIG_URL,
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
+    )
+    responses.get(RUN_URL, json=jobA_runs)
+    responses.post(ENVELOPE_URL)
+    # Only the one URL is refused
+    method = (
+        responses.POST
+        if forbidden_url in (ACCESS_TOKENS_URL, ENVELOPE_URL)
+        else responses.GET
+    )
+    responses.replace(method, forbidden_url, status=403)
+
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == f"{host} refused the request with a 403."
+    assert http_code == 200
+    # Errors get reported to Sentry; warnings don't
+    assert [r.levelname for r in caplog.records] == ["WARNING"]
+    assert (
+        caplog.records[0]
+        .getMessage()
+        .startswith(f"getsentry got a 403 from {host}: 403 Client Error")
+    )
+    mock_metrics.count.assert_called_once_with(
+        "forbidden", 1, attributes={"owner": "getsentry", "host": host}
+    )
+
+
+@responses.activate
+@mock.patch("src.web_app_handler.metrics")
+@pytest.mark.parametrize(
+    "failing_url,host",
+    (
+        (ACCESS_TOKENS_URL, "api.github.com"),
+        (CONFIG_URL, "api.github.com"),
+        (RUN_URL, "api.github.com"),
+        (ENVELOPE_URL, "random.ingest.sentry.io"),
+    ),
+)
+@pytest.mark.parametrize(
+    "error",
+    (
+        requests.ConnectTimeout(),
+        requests.ReadTimeout(),
+        requests.ConnectionError("Connection reset by peer"),
+        requests.exceptions.SSLError(),
+    ),
+)
+def test_network_error_is_a_warning(
+    mock_metrics: MagicMock,
+    error: requests.RequestException,
+    failing_url: str,
+    host: str,
+    gh_app_env: None,
+    jobA_job: dict[str, Any],
+    jobA_runs: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, json={"token": "irrelevant"})
+    responses.delete("https://api.github.com/installation/token")
+    responses.get(
+        CONFIG_URL,
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
+    )
+    responses.get(RUN_URL, json=jobA_runs)
+    responses.post(ENVELOPE_URL)
+    # Only the request to the one URL fails
+    method = (
+        responses.POST
+        if failing_url in (ACCESS_TOKENS_URL, ENVELOPE_URL)
+        else responses.GET
+    )
+    responses.replace(method, failing_url, body=error)
+
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
+            "workflow_job": jobA_job,
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+
+    assert reason == f"The request to {host} failed with a network error."
+    assert http_code == 200
+    # Errors get reported to Sentry; warnings don't
+    assert [r.levelname for r in caplog.records] == ["WARNING"]
+    assert (
+        caplog.records[0]
+        .getMessage()
+        .startswith(f"getsentry hit a network error talking to {host}")
+    )
+    mock_metrics.count.assert_called_once_with(
+        "network_error", 1, attributes={"owner": "getsentry", "host": host}
+    )
+
+
+@responses.activate
+def test_other_http_errors_propagate(
+    gh_app_env: None, jobA_job: dict[str, Any]
+) -> None:
+    responses.post(ACCESS_TOKENS_URL, status=500)
+
+    with pytest.raises(requests.HTTPError):
+        WebAppHandler().handle_event(
+            data={
+                "action": "completed",
+                "installation": {"id": 1},
+                "repository": {
+                    "full_name": "getsentry/sentry",
+                    "owner": {"login": "getsentry"},
+                },
+                "workflow_job": jobA_job,
+            },
+            headers={"X-GitHub-Event": "workflow_job"},
+        )
+
+
+def test_missing_workflow_job() -> None:
     handler = WebAppHandler()
     # This tries to send a trace but we're missing the workflow_job key
     with pytest.raises(KeyError) as excinfo:
@@ -143,39 +308,61 @@ def test_missing_workflow_job(monkeypatch):
     assert msg == "workflow_job"
 
 
-def test_valid_signature_no_secret(monkeypatch):
-    monkeypatch.delenv("GH_WEBHOOK_SECRET", raising=False)
+def test_no_secret_rejects_every_payload(webhook_event: dict[str, Any]) -> None:
     handler = WebAppHandler()
-    assert handler.valid_signature(body={}, headers={}) == True
-
-
-def test_valid_signature(monkeypatch, webhook_event):
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
-    handler = WebAppHandler()
-    assert (
-        handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
-            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
-        )
-        == True
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
     )
 
 
-def test_invalid_signature(monkeypatch, webhook_event):
+def test_missing_signature_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    handler = WebAppHandler()
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(), headers={}
+    )
+
+
+def test_non_ascii_signature_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    handler = WebAppHandler()
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": "sha256=\u00e9"},
+    )
+
+
+def test_valid_signature(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    handler = WebAppHandler()
+    assert handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
+    )
+
+
+def test_invalid_signature(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_WEBHOOK_SECRET", "mistyped_secret")
     handler = WebAppHandler()
-    # This is unit testing that the function works as expected
-    assert (
-        handler.valid_signature(
-            body=json.dumps(webhook_event["payload"]).encode(),
-            headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
-        )
-        == False
+    assert not handler.valid_signature(
+        body=json.dumps(webhook_event["payload"]).encode(),
+        headers={"X-Hub-Signature-256": f"sha256={valid_signature}"},
     )
 
 
-def test_handle_event_with_secret(monkeypatch, webhook_event):
-    monkeypatch.setenv("GH_WEBHOOK_SECRET", "fake_secret")
+def test_handle_event_with_secret(
+    monkeypatch: pytest.MonkeyPatch, webhook_event: dict[str, Any]
+) -> None:
+    monkeypatch.setenv("GH_WEBHOOK_SECRET", WEBHOOK_SECRET)
     handler = WebAppHandler(dry_run=True)
     reason, http_code = handler.handle_event(
         data=webhook_event["payload"],
@@ -186,11 +373,12 @@ def test_handle_event_with_secret(monkeypatch, webhook_event):
 
 
 @responses.activate
-def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
-    with open("tests/fixtures/commit/webhook_payload.json") as f:
-        payload = json.load(f)
-    with open("tests/fixtures/commit/runs.json") as f:
-        runs = json.load(f)
+def test_workflow_run_sends_commit_trace(
+    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
+    commit_webhook_payload: dict[str, Any],
+    commit_runs: dict[str, Any],
+) -> None:
     monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
     responses.post(
         "https://api.github.com/app/installations/1/access_tokens",
@@ -199,15 +387,15 @@ def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
     responses.delete("https://api.github.com/installation/token")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("https://foo@random.ingest.sentry.io/1234"),
+        json=sentry_config_response("https://foo@random.ingest.sentry.io/1234"),
     )
     runs_url = responses.get(
-        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=runs
+        "https://api.github.com/repos/getsentry/sentry/actions/runs", json=commit_runs
     )
     envelope = responses.post("https://random.ingest.sentry.io/api/1234/envelope/")
 
     reason, http_code = WebAppHandler().handle_event(
-        data=payload, headers={"X-GitHub-Event": "workflow_run"}
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
 
     assert (reason, http_code) == ("OK", 200)
@@ -216,13 +404,18 @@ def test_workflow_run_sends_commit_trace(monkeypatch, gh_app_env):
 
 
 @responses.activate
-def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job):
+def test_repository_webhook_in_github_app_mode_is_rejected(
+    gh_app_env: None, jobA_job: dict[str, Any]
+) -> None:
     handler = WebAppHandler()
     # Repository webhooks have no installation, so no installation token can be minted
     reason, http_code = handler.handle_event(
         data={
             "action": "completed",
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -236,19 +429,23 @@ def test_repository_webhook_in_github_app_mode_is_rejected(gh_app_env, jobA_job)
 
 @responses.activate
 @mock.patch("src.web_app_handler.metrics")
-def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
-    monkeypatch.delenv("GH_APP_ID", raising=False)
+def test_repository_webhook_uses_the_token(
+    mock_metrics: MagicMock, monkeypatch: pytest.MonkeyPatch, jobA_job: dict[str, Any]
+) -> None:
     monkeypatch.setenv("GH_TOKEN", "pat")
     responses.get(
         sentry_config_api_url.replace("{owner}", "getsentry"),
-        json=config_file_meta("dsn: <>"),
+        json=sentry_config_response("dsn: <>"),
     )
 
     handler = WebAppHandler()
     reason, http_code = handler.handle_event(
         data={
             "action": "completed",
-            "repository": {"owner": {"login": "getsentry"}},
+            "repository": {
+                "full_name": "getsentry/sentry",
+                "owner": {"login": "getsentry"},
+            },
             "workflow_job": jobA_job,
         },
         headers={"X-GitHub-Event": "workflow_job"},
@@ -257,3 +454,88 @@ def test_repository_webhook_uses_the_token(mock_metrics, monkeypatch, jobA_job):
     assert reason == "The DSN in the org's .sentry/sentry_config.ini is invalid."
     assert http_code == 200
     assert responses.calls[0].request.headers["Authorization"] == "token pat"
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "owner,run_url",
+    (
+        # The DSN would come from attacker's .sentry repo
+        ("attacker", "https://api.github.com/repos/getsentry/sentry/actions/runs/1"),
+        ("getsentry", "https://api.github.com/repos/getsentry/private/actions/runs/1"),
+        (
+            "getsentry",
+            "https://api.github.com/repos/getsentry/sentry/actions/runs/1/../../../private/actions/runs/1",
+        ),
+        ("getsentry", "https://api.github.com/repos/getsentry/sentry/actions/secrets"),
+    ),
+)
+def test_job_outside_the_payload_repository_is_rejected(
+    gh_app_env: None, jobA_job: dict[str, Any], owner: str, run_url: str
+) -> None:
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"full_name": "getsentry/sentry", "owner": {"login": owner}},
+            "workflow_job": {**jobA_job, "run_url": run_url},
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "full_name", ("getsentry/../victim/private", "getsentry/..", "getsentry/a/b")
+)
+def test_repository_name_with_a_path_is_rejected(
+    gh_app_env: None, jobA_job: dict[str, Any], full_name: str
+) -> None:
+    reason, http_code = WebAppHandler().handle_event(
+        data={
+            "action": "completed",
+            "installation": {"id": 1},
+            "repository": {"full_name": full_name, "owner": {"login": "getsentry"}},
+            "workflow_job": {
+                **jobA_job,
+                "run_url": f"https://api.github.com/repos/{full_name}/actions/runs/1",
+            },
+        },
+        headers={"X-GitHub-Event": "workflow_job"},
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_run_outside_the_payload_repository_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    gh_app_env: None,
+    commit_webhook_payload: dict[str, Any],
+) -> None:
+    monkeypatch.setenv("COMMIT_TRACES_ENABLED", "true")
+    commit_webhook_payload["workflow_run"]["repository"][
+        "full_name"
+    ] = "getsentry/private"
+
+    reason, http_code = WebAppHandler().handle_event(
+        data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
+    )
+    assert reason == "The payload's workflow doesn't belong to its repository."
+    assert http_code == 400
+    assert len(responses.calls) == 0
+
+
+def test_unloadable_app_key_does_not_fall_back_to_the_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GH_APP_ID", "1")
+    monkeypatch.setenv("GH_TOKEN", "pat")
+    # GH_APP_PRIVATE_KEY is unset
+
+    with pytest.raises(KeyError):
+        WebAppHandler()
