@@ -4,23 +4,41 @@ updates:
     directory: /
     # Dependabot has no security updates for Docker, and base images are pinned by
     # digest, so OS security fixes only reach the image through these version
-    # updates. Check daily so a fix doesn't also wait for a weekly run.
+    # updates. Check monthly and bump every image in one PR to keep PRs rare. The
+    # weekly image scan (.github/workflows/image-scan.yml) flags a fixable high or
+    # critical CVE sooner; bump that image by hand then.
     schedule:
-      interval: daily
+      interval: monthly
     # Wait a week after a release, so a compromised or broken one is likely
     # caught before Dependabot proposes it.
     cooldown:
       default-days: 7
+    groups:
+      docker:
+        patterns:
+          - "*"
   # For the ecosystems below, update a dependency only when it has a security
   # advisory. A limit of 0 turns off version updates, and Dependabot security
-  # updates still open PRs for vulnerable dependencies.
+  # updates still open PRs for vulnerable dependencies. Security updates don't
+  # follow `schedule`: they open as soon as an advisory is published. The group
+  # puts every fix for an ecosystem in one PR instead of one PR per dependency.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 0
+    groups:
+      github-actions:
+        applies-to: security-updates
+        patterns:
+          - "*"
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 0
+    groups:
+      uv:
+        applies-to: security-updates
+        patterns:
+          - "*"
