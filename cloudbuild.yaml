@@ -1,4 +1,5 @@
-# Build config for the Cloud Build trigger that runs on merges to main.
+# Build config for the Cloud Build trigger that runs on merges to main. Each
+# build deploys its image to Cloud Run.
 #
 # Each build pushes the tagged image index plus untagged child manifests: the
 # platform image and BuildKit attestations. Cloud Run can't deploy an
@@ -6,9 +7,13 @@
 # deploy by tag. The `latest` tag makes the newest build easy to pick.
 substitutions:
   _IMAGE: gcr.io/${PROJECT_ID}/sentry-github-actions-app
+  _SERVICE: github-actions-app
+  _REGION: us-central1
 options:
   # Lets _IMAGE use PROJECT_ID
   dynamicSubstitutions: true
+  # Required when the trigger runs as a user-managed service account
+  logging: CLOUD_LOGGING_ONLY
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
@@ -18,6 +23,23 @@ steps:
       # Reported as the Sentry release; see the Dockerfile
       - --build-arg=SENTRY_RELEASE=${COMMIT_SHA}
       - .
+  # Cloud Build pushes `images` only after every step, so push before deploying
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_IMAGE}
+  # Changes only the image. The service keeps its env vars, secrets, and
+  # runtime service account.
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_IMAGE}:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --quiet
 images:
   - ${_IMAGE}:${COMMIT_SHA}
   - ${_IMAGE}:latest

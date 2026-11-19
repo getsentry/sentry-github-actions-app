@@ -4,9 +4,11 @@ This page covers Sentry's own deployment of the app and its GitHub App. Users in
 
 ## Backend deployment
 
-The app runs on Google Cloud Run. Google Cloud Build builds a Docker image with [`cloudbuild.yaml`](../cloudbuild.yaml) when code merges to `main`, and tags it with the commit SHA and `latest`. To release it, log in to Google Cloud Run and deploy the image by one of those tags. The GitHub App's webhook URL points at this deployment.
+The app runs on Google Cloud Run as the `github-actions-app` service in `us-central1`. When code merges to `main`, Google Cloud Build runs [`cloudbuild.yaml`](../cloudbuild.yaml). It builds a Docker image, tags it with the commit SHA and `latest`, and deploys the SHA tag to the service as a new revision. The deploy changes only the image, so the service keeps its environment variables and secrets. To roll back, deploy an older SHA tag or route traffic to an older revision in the Cloud Run console. The GitHub App's webhook URL points at this deployment.
 
-The image reports its commit SHA as the Sentry release, so the release on the app's own events shows which commit is deployed. `ci.yml` creates a Sentry release for each commit on `main`, but that doesn't mean it's deployed.
+The Cloud Build trigger's service account needs `roles/run.developer` on the service, and `roles/iam.serviceAccountUser` on the service's runtime service account. Without them, the build pushes the image and then fails at the deploy step.
+
+The image reports its commit SHA as the Sentry release, so the release on the app's own events shows which commit is deployed. `ci.yml` creates a Sentry release for each commit on `main` when it merges. A failed Cloud Build or a manual rollback can still leave a different commit live, so check the release on the app's events.
 
 A Sentry project tracks errors of the backend itself. Its DSN is `APP_DSN`.
 
