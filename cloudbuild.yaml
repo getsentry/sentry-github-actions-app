@@ -12,6 +12,8 @@ substitutions:
 options:
   # Lets _IMAGE use PROJECT_ID
   dynamicSubstitutions: true
+  # Required when the trigger runs as a user-managed service account
+  logging: CLOUD_LOGGING_ONLY
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
