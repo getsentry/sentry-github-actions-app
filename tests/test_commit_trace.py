@@ -259,7 +259,7 @@ def test_workflow_run_events_are_off_by_default(
     reason, http_code = WebAppHandler().handle_event(
         data=commit_webhook_payload, headers={"X-GitHub-Event": "workflow_run"}
     )
-    assert reason == "Commit traces are not enabled."
+    assert reason == "Workflow run traces are not enabled."
     assert http_code == 200
     assert len(responses.calls) == 0
 

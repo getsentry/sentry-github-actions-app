@@ -21,6 +21,7 @@ APP_ENV_VARS = (
     "GH_TOKEN",
     "GH_WEBHOOK_SECRET",
     "K_SERVICE",
+    "WORKFLOW_TRACES_ORGS",
 )
 
 
