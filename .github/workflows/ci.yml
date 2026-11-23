@@ -152,16 +152,16 @@ jobs:
           uv sync --locked
 
       # Without this, every run rebuilds every hook's environment, which is most of
-      # the job's time. pre-commit rebuilds any cached environment that's broken.
-      - name: Cache pre-commit environments
+      # the job's time. prek rebuilds any cached environment that's broken.
+      - name: Cache prek environments
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          path: ~/.cache/prek
+          key: prek-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run hooks
         run: |
-          uv run pre-commit run --all-files
+          uv run prek run --all-files
 
   # The one check the branch ruleset requires, so adding or renaming a job above
   # only means updating this list. It runs even when a job fails, and fails unless
