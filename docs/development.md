@@ -2,12 +2,12 @@
 
 ## Set up
 
-Install [uv](https://docs.astral.sh/uv/) (`brew install uv`). If you use direnv, `.envrc` syncs `.venv`, activates it, and installs the pre-commit hooks. Otherwise, run:
+Install [uv](https://docs.astral.sh/uv/) (`brew install uv`). If you use direnv, `.envrc` syncs `.venv`, activates it, and installs the prek hooks. Otherwise, run:
 
 ```shell
 uv sync
 source .venv/bin/activate
-pre-commit install
+prek install
 ```
 
 `uv sync` installs the Python version that `pyproject.toml` requires if you don't have it, and the dependencies pinned in `uv.lock`.
@@ -22,7 +22,7 @@ To add or upgrade a dependency, use `uv add <package>` (`uv add --dev <package>`
 | `pytest` | Run the tests, as CI does. |
 | `pytest --cov=src --cov-report=html` | Generate a coverage report. |
 | `mypy` | Type check the code in strict mode, as CI does. |
-| `pre-commit run --all-files` | Run the lint and format hooks, as CI does. |
+| `prek run --all-files` | Run the lint and format hooks, as CI does. |
 
 ## Ingest a single job
 

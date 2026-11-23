@@ -7,7 +7,7 @@ Flask app that receives GitHub `workflow_job` and `workflow_run` webhooks and se
 - Install: `uv sync`
 - Test: `uv run pytest`
 - Type check: `uv run mypy` (strict, over `src`, `tests`, and `cli.py`)
-- Lint and format: `uv run pre-commit run --all-files`
+- Lint and format: `uv run prek run --all-files`
 
 ## Invariants
 

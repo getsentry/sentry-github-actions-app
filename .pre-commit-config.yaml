@@ -1,6 +1,6 @@
 # Hooks run on contributors' machines and in CI, so pin each one to a commit that a
 # moved tag can't change. To bump one, run
-# `pre-commit autoupdate --freeze --repo <url>`, which keeps the `# frozen:` comment.
+# `prek update --freeze --repo <url>`, which keeps the `# frozen:` comment.
 repos:
   - repo: https://github.com/psf/black
     # 22.x crashes on Python 3.15. 24.0+ adds a blank line after module docstrings,
@@ -13,12 +13,14 @@ repos:
     rev: 0731985330417a281c437a7be4bd7a8f88e31e8d  # frozen: 0.17.1
     hooks:
       - id: check-github-workflows
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: db7346d375eda68a0174f2c057dd97f2fbffe030  # frozen: v4.2.0
+  - repo: builtin
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: db7346d375eda68a0174f2c057dd97f2fbffe030  # frozen: v4.2.0
+    hooks:
       - id: debug-statements
   - repo: https://github.com/asottile/reorder_python_imports
     rev: 4690733311bbfba33558e4d50a7f0092c64d78d8  # frozen: v3.19.0
