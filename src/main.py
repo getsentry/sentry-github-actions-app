@@ -13,8 +13,9 @@ from flask import request
 from flask import Response
 from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.scrubber import EventScrubber
+from sentry_sdk.integrations.logging import LoggingIntegration
 
+from .sentry_scrubbing import scrub_event
 from .web_app_handler import WebAppHandler
 
 
@@ -22,16 +23,44 @@ def init_sentry(dsn: str, **options: Any) -> None:
     # This tracks errors and performance of the app itself rather than GH workflows
     sentry_sdk.init(
         dsn=dsn,
-        integrations=[FlaskIntegration()],
+        integrations=[
+            FlaskIntegration(),
+            LoggingIntegration(level=None, event_level=logging.ERROR),
+        ],
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
         environment=os.environ.get("FLASK_ENV", "production"),
+        attach_stacktrace=False,
+        data_collection={
+            "user_info": False,
+            "http_bodies": ["incoming_request"],
+            "graphql": {"document": False, "variables": False},
+            "gen_ai": {"inputs": False, "outputs": False},
+            "mcp": {"inputs": False, "outputs": False},
+            "database_query_data": False,
+            "queues": False,
+            "http_headers": {
+                "request": {
+                    "mode": "denylist",
+                    "terms": ["forwarded", "-ip", "remote-", "via", "-user"],
+                },
+            },
+            "cookies": {
+                "mode": "denylist",
+                "terms": ["forwarded", "-ip", "remote-", "via", "-user"],
+            },
+            "url_query_params": {
+                "mode": "denylist",
+                "terms": ["forwarded", "-ip", "remote-", "via", "-user"],
+            },
+            "stack_frame_variables": {"mode": "denylist"},
+        },
         # GitHub tokens sit in dicts in the frames' local variables (e.g. the request
-        # `headers` and the access token response), and the default scrubber only
-        # checks top-level variable names
-        event_scrubber=EventScrubber(recursive=True),
+        # `headers` and the access token response), and data_collection only checks
+        # top-level variable names
+        before_send=scrub_event,
         **options,
     )
 

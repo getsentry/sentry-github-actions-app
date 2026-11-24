@@ -8,20 +8,17 @@ import re
 import uuid
 from datetime import datetime
 from typing import Any
-from typing import cast
-from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 import requests
 from sentry_sdk.envelope import Envelope
+from sentry_sdk.envelope import Item
+from sentry_sdk.envelope import PayloadRef
 from sentry_sdk.utils import BadDsn
 from sentry_sdk.utils import Dsn
 from sentry_sdk.utils import format_timestamp
 
 from src import REQUEST_TIMEOUT
-
-if TYPE_CHECKING:
-    from sentry_sdk._types import Event
 
 GITHUB_API_URL = "https://api.github.com"
 # sentry.io or a subdomain. Labels can only hold letters, digits, and hyphens: the DSN's
@@ -144,7 +141,7 @@ class GithubClient:
         if self.dry_run:
             return None
         envelope = Envelope()
-        envelope.add_transaction(cast("Event", trace))
+        envelope.add_item(Item(payload=PayloadRef(json=trace), type="transaction"))
         now = datetime.utcnow()
 
         headers = {
