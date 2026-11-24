@@ -33,7 +33,8 @@ Here's a list of benefits you will get if you use this project:
   - Notice when `on: schedule` workflows fail which currently GitHub does not make it easy to notice
 - Create widgets and dashboards showing your CI data
   - For instance you can show: slowest jobs, most failing jobs, jobs requirying re-runs, repos consuming most CI
-  - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt
+  - Some of the main tags by which you can slice the data: workflow file, repo, branch, commit, job_status, pull_request, run_attempt, runner_labels
+  - Each job has a `queue_time` measurement: how long it waited for a runner, which the job's duration leaves out. For instance, chart its p95 grouped by `runner_labels`
 
 Watch this video showing the features described above:
 
