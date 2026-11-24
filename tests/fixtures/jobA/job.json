@@ -9,6 +9,7 @@
   "html_url": "https://github.com/getsentry/sentry/runs/5857527450?check_suite_focus=true",
   "status": "completed",
   "conclusion": "success",
+  "created_at": "2022-04-06T19:51:02Z",
   "started_at": "2022-04-06T19:52:17Z",
   "completed_at": "2022-04-06T20:05:37Z",
   "name": "frontend tests (0)",

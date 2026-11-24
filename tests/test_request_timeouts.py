@@ -20,6 +20,8 @@ def test_every_request_has_a_timeout(
 ) -> None:
     data = webhook_event["payload"]
     data["installation"] = {"id": 1}
+    # The fixture predates GitHub sending `created_at`, and its signature is pinned
+    data["workflow_job"]["created_at"] = data["workflow_job"]["started_at"]
     org = data["repository"]["owner"]["login"]
 
     responses.post(

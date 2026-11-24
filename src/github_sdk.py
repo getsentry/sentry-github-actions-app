@@ -102,6 +102,8 @@ class GithubClient:
                 # fails for required workflows (`workflow_url` 422s). Their path can end
                 # in a ref (e.g. `foo.yml@refs/heads/main`), which isn't part of the name
                 "workflow": _workflow_file(runs),
+                # e.g. `macos-15`; queue times depend on which runners a job asks for
+                "runner_labels": ",".join(job["labels"]),
             },
         }
         if runs.get("pull_requests"):
@@ -126,6 +128,11 @@ class GithubClient:
         transaction["user"] = meta["author"]
         transaction["tags"] = meta["tags"]
         transaction["contexts"]["trace"]["data"] = meta["data"]
+        # The transaction starts when a runner picks the job up, so the time the
+        # job waited for a runner is only in this measurement
+        transaction["measurements"] = {
+            "queue_time": {"value": _queue_time_ms(job), "unit": "millisecond"}
+        }
 
         # Transactions have name, spans don't.
         transaction["contexts"]["trace"]["op"] = job["name"]
@@ -345,6 +352,12 @@ def _run_duration(run: dict[str, Any]) -> float:
 
 def _parse_ts(ts: str) -> datetime:
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def _queue_time_ms(job: dict[str, Any]) -> float:
+    # From the job being queued until a runner started it
+    queued = _parse_ts(job["started_at"]) - _parse_ts(job["created_at"])
+    return queued.total_seconds() * 1000
 
 
 def _commit_transaction(
