@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import json
 from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -211,4 +212,4 @@ def test_send_trace(
     envelope = Envelope.deserialize(gzip.decompress(request.body))
     (item,) = envelope.items
     assert item.type == "transaction"
-    assert item.payload.json == jobA_trace
+    assert json.loads(item.payload.get_bytes()) == jobA_trace
